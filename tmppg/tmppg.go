@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"os/exec"
-	"sync/atomic"
 	"syscall"
 	"time"
 )
@@ -46,24 +45,33 @@ func WithPostgresql(fn func(socketDir string) error) error {
 		slog.Debug("postgres failed with arguments", slog.Any("args", pgCmd.Args), logutil.Err(err))
 		return fmt.Errorf("start postgres: %w", err)
 	}
+	exitErrCh := make(chan error, 1)
+	go func() {
+		exitErrCh <- pgCmd.Wait()
+		close(exitErrCh)
+	}()
+
+	// run database removal deferred, so the database also gets removed on
+	// runtime.Goexit() and t.FailNow()
 	defer func() {
 		err := pgCmd.Process.Signal(syscall.SIGTERM)
 		if err != nil {
 			slog.Error("failed to send SIGTERM to postgres", logutil.Err(err))
 		}
-	}()
-	pgDone := atomic.Bool{}
-	go func() {
-		err := pgCmd.Wait()
+		err = <-exitErrCh
 		var exitErr *exec.ExitError
-		if err != nil && !errors.As(err, &exitErr) {
-			slog.Error("failed to wait for postgres", logutil.Err(err))
+		if errors.As(err, &exitErr) {
+			slog.Error("postgres exited with error", logutil.Err(err))
+		} else if err != nil {
+			slog.Error("failed to wait for postgres to exit", logutil.Err(err))
 		}
-		pgDone.Store(true)
 	}()
+
 	for {
-		if pgDone.Load() {
-			return fmt.Errorf("postgres exited unexpectedly")
+		select {
+		case err := <-exitErrCh:
+			return fmt.Errorf("postgres exited unexpectedly: %w", err)
+		case <-time.After(100 * time.Millisecond):
 		}
 		cmd := makeCmd("pg_isready", "-q", "-h", dir, "-d", "postgres")
 		err := cmd.Run()
@@ -74,11 +82,12 @@ func WithPostgresql(fn func(socketDir string) error) error {
 			if exitErr.ExitCode() == pqPingReject || exitErr.ExitCode() == pqPingNoResponse {
 				slog.Info("waiting for PostgreSQL to be ready")
 			} else {
+				// this will trigger the deferred postgres shutdown, too
 				return fmt.Errorf("pg_isready: %w", err)
 			}
 		}
-		time.Sleep(100 * time.Millisecond)
 	}
+
 	return fn(dir)
 }
 
