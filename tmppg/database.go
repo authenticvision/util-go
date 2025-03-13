@@ -69,7 +69,16 @@ func (i *Instance) WithDatabase(ctx context.Context, fn func(pool *pgxpool.Pool)
 
 func (i *Instance) WithDatabaseSchema(ctx context.Context, schemaSQL string, fn func(pool *pgxpool.Pool) error) error {
 	return i.WithDatabase(ctx, func(pool *pgxpool.Pool) error {
-		_, err := pool.Exec(ctx, schemaSQL)
+		// run DDL on its own connection in case it does any weird stuff like `SET search_path`
+		// closing the connection afterwards ensures that `SET`s are discarded
+		err := pool.AcquireFunc(ctx, func(conn *pgxpool.Conn) error {
+			_, err := conn.Exec(ctx, schemaSQL)
+			if err != nil {
+				return err
+			}
+			err = conn.Conn().Close(ctx)
+			return err
+		})
 		if err != nil {
 			return fmt.Errorf("create schema: %w", err)
 		}
