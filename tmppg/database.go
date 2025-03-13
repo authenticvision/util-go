@@ -3,8 +3,8 @@ package tmppg
 import (
 	"context"
 	"fmt"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log/slog"
 	"math/rand/v2"
 )
@@ -54,7 +54,7 @@ func (i *Instance) WithDatabase(ctx context.Context, fn func(pool *pgxpool.Pool)
 		}
 	}()
 
-	pool, err := pgxpool.Connect(ctx, i.connString+" dbname="+dbname)
+	pool, err := pgxpool.New(ctx, i.connString+" dbname="+dbname)
 	if err != nil {
 		return fmt.Errorf("connect to database %q: %w", dbname, err)
 	}
