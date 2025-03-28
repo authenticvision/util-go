@@ -7,6 +7,23 @@ func Map[T any, R any](list []T, fn func(T) R) (ret []R) {
 	return
 }
 
+func Filter[T any](list []T, fn func(T) bool) (ret []T) {
+	for _, v := range list {
+		if fn(v) {
+			ret = append(ret, v)
+		}
+	}
+	return
+}
+
 func Ref[T any](v T) *T {
 	return &v
+}
+
+func Keys[T comparable, X any](m map[T]X) []T {
+	var keys []T
+	for k := range m {
+		keys = append(keys, k)
+	}
+	return keys
 }

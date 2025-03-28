@@ -11,8 +11,8 @@ var DefaultConfig = Config{
 }
 
 type Config struct {
-	Level  Level  `usage:"TRACE, DEBUG, INFO, WARN, or ERROR" yaml:"stderr_level" env:"LOG_STDERR_LEVEL" env-default:"INFO"`
-	Format Format `usage:"TEXT or JSON" yaml:"stderr_format" env:"LOG_STDERR_FORMAT" env-default:"TEXT"`
+	Level  Level  `usage:"TRACE, DEBUG, INFO, WARN, or ERROR" default:"INFO"`
+	Format Format `usage:"TEXT or JSON" default:"TEXT"`
 }
 
 func (c Config) NewHandler() (slog.Handler, error) {
