@@ -160,6 +160,19 @@ func (p *parser) parseValue(prefix string, field reflect.StructField, value refl
 			Setter:   setter,
 		})
 	}
+
+	if p, ok := customTypes[value.Type()]; ok {
+		cf(func(s string) error {
+			parsed, err := p(s)
+			if err != nil {
+				return err
+			}
+			value.Set(reflect.ValueOf(parsed))
+			return nil
+		})
+		return nil
+	}
+
 	if value.Addr().Type().Implements(unmarshalerType) {
 		unmarshaler := value.Addr().Interface().(encoding.TextUnmarshaler)
 		cf(func(s string) error {
