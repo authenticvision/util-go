@@ -1,6 +1,6 @@
-module github.com/authenticvision/httputil-go
+module github.com/authenticvision/util-go
 
-go 1.22.0
+go 1.24.0
 
 require go.uber.org/zap v1.27.0
 

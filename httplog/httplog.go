@@ -3,7 +3,7 @@ package httplog
 // TODO: move to slog eventually
 
 import (
-	"github.com/authenticvision/httputil-go"
+	"github.com/authenticvision/util-go/httputil"
 	"go.uber.org/zap"
 	"net/http"
 )
