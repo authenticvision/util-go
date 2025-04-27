@@ -31,24 +31,6 @@ type wrappedHandler struct {
 	next http.Handler
 }
 
-type datadogLogHttpRequest struct {
-	Host           string               `json:"host"`
-	Proto          string               `json:"proto"`
-	Method         string               `json:"method"`
-	StatusCategory string               `json:"status_category"`
-	StatusCode     int                  `json:"status_code"`
-	URLDetails     datadogLogUrlDetails `json:"url_details"`
-}
-
-type datadogLogUrlDetails struct {
-	Path string `json:"path"`
-}
-
-type datadogLogHttpClient struct {
-	IP   string `json:"ip"`
-	Port string `json:"port,omitempty"`
-}
-
 func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log := mid.log.With(slog.String("request_id", uuid.NewString()))
 	hook := interceptStatusCode(w)
@@ -57,17 +39,8 @@ func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	duration := time.Since(now)
 	log.Info("HTTP request",
 		slog.Duration("duration", duration),
-		slog.Any("http", datadogLogHttpRequest{
-			Host:           r.Host,
-			Proto:          r.Proto,
-			Method:         r.Method,
-			StatusCategory: statusCategoryFromCode(hook.StatusCode()),
-			StatusCode:     hook.StatusCode(),
-			URLDetails:     datadogLogUrlDetails{Path: r.URL.Path},
-		}),
-		slog.Any("network", map[string]datadogLogHttpClient{
-			"client": clientInfoFromString(r.RemoteAddr),
-		}),
+		slog.Any("http", makeDatadogHttpValue(r, hook.StatusCode())),
+		slog.Any("network", makeDatadogNetworkValue(r)),
 	)
 }
 
@@ -111,26 +84,4 @@ type httpStatusHookHijackable struct {
 
 func (hook *httpStatusHookHijackable) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return hook.ResponseWriter.(http.Hijacker).Hijack()
-}
-
-func clientInfoFromString(ipAndPort string) datadogLogHttpClient {
-	ip, port, err := net.SplitHostPort(ipAndPort)
-	if err != nil {
-		ip = ipAndPort
-		port = ""
-	}
-	return datadogLogHttpClient{
-		IP:   ip,
-		Port: port,
-	}
-}
-
-func statusCategoryFromCode(code int) string {
-	if code >= 200 && code < 400 {
-		return "OK"
-	} else if code >= 400 && code < 500 {
-		return "warning"
-	} else {
-		return "error"
-	}
 }
