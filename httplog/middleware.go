@@ -49,15 +49,12 @@ type datadogLogHttpClient struct {
 }
 
 func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	le := &logExtender{log: mid.log}
-	ctx := logutil.WithLogContext(withLogExtender(r.Context(), le), le.Log())
+	log := mid.log
 	hook := interceptStatusCode(w)
-
 	now := time.Now()
-	mid.next.ServeHTTP(hook, r.Clone(ctx))
+	mid.next.ServeHTTP(hook, r.WithContext(logutil.WithLogContext(r.Context(), log)))
 	duration := time.Since(now)
-
-	le.Log().Info("HTTP request",
+	log.Info("HTTP request",
 		slog.Duration("duration", duration),
 		slog.Any("http", datadogLogHttpRequest{
 			Host:           r.Host,
