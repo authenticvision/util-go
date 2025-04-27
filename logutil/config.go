@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"fmt"
 	"log/slog"
 )
 
@@ -10,7 +11,7 @@ var DefaultConfig = Config{
 }
 
 type Config struct {
-	Level  Level  `usage:"DEBUG, INFO, WARN, or ERROR"`
+	Level  Level  `usage:"TRACE, DEBUG, INFO, WARN, or ERROR"`
 	Format Format `usage:"TEXT or JSON"`
 }
 
