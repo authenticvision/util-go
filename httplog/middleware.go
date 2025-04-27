@@ -40,14 +40,14 @@ type datadogLogHttpClient struct {
 }
 
 func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	// attaching the HTTP logger to the request's context allows handlers to tag the request
 	le := &logExtender{log: m.log}
-	now := time.Now()
+	ctx := logutil.WithLogContext(withLogExtender(r.Context(), le), le.Log())
 	hook := interceptStatusCode(w)
-	ctx := withLogExtender(r.Context(), le)
-	ctx = logutil.WithLogContext(ctx, le.Log())
+
+	now := time.Now()
 	m.next.ServeHTTP(hook, r.Clone(ctx))
 	duration := time.Since(now)
+
 	le.Log().Info("HTTP request",
 		slog.Duration("duration", duration),
 		slog.Any("http", datadogLogHttpRequest{
@@ -60,7 +60,8 @@ func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}),
 		slog.Any("network", map[string]datadogLogHttpClient{
 			"client": clientInfoFromString(r.RemoteAddr),
-		}))
+		}),
+	)
 }
 
 type ResponseWriterWithStatus interface {
