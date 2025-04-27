@@ -8,25 +8,25 @@ import (
 	"os"
 )
 
-func NewHandler(format Format, level Level) (slog.Handler, error) {
+func NewHandler(format Format, level slog.Level) (slog.Handler, error) {
 	out := os.Stderr
 	switch format {
 	case FormatText:
 		return tint.NewHandler(out, &tint.Options{
-			Level:       slog.Level(level),
+			Level:       level,
 			ReplaceAttr: LevelAttrReplacer,
 			NoColor:     !isatty.IsTerminal(out.Fd()),
 		}), nil
 	case FormatJSON:
 		return slog.NewJSONHandler(out, &slog.HandlerOptions{
-			Level:       slog.Level(level),
+			Level:       level,
 			ReplaceAttr: LevelAttrReplacer,
 		}), nil
 	}
 	return nil, fmt.Errorf("unsupported log format: %s", format)
 }
 
-func MustNewHandler(format Format, level Level) slog.Handler {
+func MustNewHandler(format Format, level slog.Level) slog.Handler {
 	h, err := NewHandler(format, level)
 	if err != nil {
 		panic(err)
