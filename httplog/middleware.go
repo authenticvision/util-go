@@ -90,7 +90,12 @@ func (hook *httpStatusHook) WriteHeader(statusCode int) {
 }
 
 func (hook *httpStatusHook) StatusCode() int {
-	return hook.statusCode
+	if hook.statusCode != 0 {
+		return hook.statusCode
+	} else {
+		// implicit behavior of Go's ResponseWriter
+		return http.StatusOK
+	}
 }
 
 type httpStatusHookHijackable struct {
