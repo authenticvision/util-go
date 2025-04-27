@@ -9,14 +9,23 @@ import (
 	"time"
 )
 
-func Middleware(log *slog.Logger, next http.Handler) http.Handler {
-	return &middleware{
-		log:  log,
-		next: next,
-	}
+type Middleware struct {
+	log *slog.Logger
 }
 
-type middleware struct {
+func (m *Middleware) Middleware(next http.Handler) http.Handler {
+	return Wrap(m.log, next)
+}
+
+func NewMiddleware(log *slog.Logger) *Middleware {
+	return &Middleware{log: log}
+}
+
+func Wrap(log *slog.Logger, next http.Handler) http.Handler {
+	return &wrappedHandler{log: log, next: next}
+}
+
+type wrappedHandler struct {
 	log  *slog.Logger
 	next http.Handler
 }
@@ -39,13 +48,13 @@ type datadogLogHttpClient struct {
 	Port string `json:"port,omitempty"`
 }
 
-func (m *middleware) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	le := &logExtender{log: m.log}
+func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	le := &logExtender{log: mid.log}
 	ctx := logutil.WithLogContext(withLogExtender(r.Context(), le), le.Log())
 	hook := interceptStatusCode(w)
 
 	now := time.Now()
-	m.next.ServeHTTP(hook, r.Clone(ctx))
+	mid.next.ServeHTTP(hook, r.Clone(ctx))
 	duration := time.Since(now)
 
 	le.Log().Info("HTTP request",
