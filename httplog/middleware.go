@@ -3,6 +3,7 @@ package httplog
 import (
 	"bufio"
 	"github.com/authenticvision/util-go/logutil"
+	"github.com/google/uuid"
 	"log/slog"
 	"net"
 	"net/http"
@@ -49,7 +50,7 @@ type datadogLogHttpClient struct {
 }
 
 func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	log := mid.log
+	log := mid.log.With(slog.String("request_id", uuid.NewString()))
 	hook := interceptStatusCode(w)
 	now := time.Now()
 	mid.next.ServeHTTP(hook, r.WithContext(logutil.WithLogContext(r.Context(), log)))
