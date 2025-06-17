@@ -2,6 +2,7 @@ package buildinfo
 
 import (
 	"fmt"
+	"log/slog"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -46,4 +47,8 @@ var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 
 func Print(name string) {
 	fmt.Printf("%s  commit: %s (%v)\n", name, GitCommit, GitCommitDate)
+}
+
+func Log(name string) {
+	slog.Info("starting "+name, slog.String("git_commit", GitCommit), slog.Any("git_commit_date", GitCommitDate))
 }
