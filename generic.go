@@ -16,6 +16,14 @@ func Filter[T any](list []T, fn func(T) bool) (ret []T) {
 	return
 }
 
+func Unique[T comparable](list []T) (ret []T) {
+	m := make(map[T]struct{})
+	for _, v := range list {
+		m[v] = struct{}{}
+	}
+	return Keys(m)
+}
+
 func Ref[T any](v T) *T {
 	return &v
 }

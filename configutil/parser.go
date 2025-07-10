@@ -9,6 +9,7 @@ import (
 	"github.com/iancoleman/strcase"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -43,6 +44,23 @@ func (e OSEnv) List() []string {
 		}
 		return name
 	})
+}
+
+type FallbackEnv struct {
+	Primary  EnvGetter
+	Fallback EnvGetter
+}
+
+func (e FallbackEnv) Get(key string) string {
+	value := e.Primary.Get(key)
+	if value == "" {
+		value = e.Fallback.Get(key)
+	}
+	return value
+}
+
+func (e FallbackEnv) List() []string {
+	return util.Unique(slices.Concat(e.Primary.List(), e.Fallback.List()))
 }
 
 func EnvFromFile(path string) (EnvGetter, error) {
