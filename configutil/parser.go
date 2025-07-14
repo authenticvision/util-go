@@ -13,27 +13,31 @@ import (
 )
 
 // Parse parses config from the environment (via EnvGetter) into a struct T.
+// If prefix is not empty, requires environment variables to be prefixed with it
+// If there are any environment variables that have the prefix but are not used
+// by the given config struct, an ExtraEnvVarsError is returned.
 // Maps and Pointers in the struct are not supported. Custom types are supported
 // via encoding.TextUnmarshaller.
 // Whether a field is required is parsed from the `required` tag. The default
 // value to use when no value is set in the environment is taken from the
 // `default` tag of a field. If there is none, the field will not be explicitly
 // initialized.
-func Parse[T any](env EnvGetter) (*T, error) {
+func Parse[T any](env EnvGetter, prefix string) (*T, error) {
 	if env == nil {
 		env = OSEnv{}
 	}
+	trackingEnv := NewTrackingEnv(env)
 	var ret T
 	v := reflect.ValueOf(&ret).Elem()
 	if v.Kind() != reflect.Struct {
 		return nil, fmt.Errorf("type %T must be a struct", ret)
 	}
 	p := parser{}
-	err := p.parseRoot(v)
+	err := p.parseRoot(v, prefix)
 	if err != nil {
 		return nil, fmt.Errorf("invalid config struct: %w", err)
 	}
-	errs := p.execute(env)
+	errs := p.execute(trackingEnv)
 	if len(errs) > 0 {
 		_, _ = fmt.Fprintf(os.Stderr, "The following errors occured while parsing configuration:\n")
 		for _, cve := range errs {
@@ -41,14 +45,30 @@ func Parse[T any](env EnvGetter) (*T, error) {
 		}
 		return nil, errs
 	}
+	if prefix != "" {
+		extra := util.Filter(trackingEnv.Unfetched(), func(s string) bool {
+			return strings.HasPrefix(s, prefix)
+		})
+		if len(extra) > 0 {
+			return nil, ExtraEnvVarsError(extra)
+		}
+	}
 	return &ret, nil
 }
 
-func (p *parser) parseRoot(v reflect.Value) error {
+// ExtraEnvVarsError is a list of environment variables that were defined but
+// not used by the config struct
+type ExtraEnvVarsError []string
+
+func (e ExtraEnvVarsError) Error() string {
+	return fmt.Sprintf("not all defined environment variables used in config: %v", strings.Join(e, ", "))
+}
+
+func (p *parser) parseRoot(v reflect.Value, prefix string) error {
 	for i := 0; i < v.NumField(); i++ {
 		f := v.Field(i)
 		t := v.Type().Field(i)
-		err := p.parseValue("", t, f)
+		err := p.parseValue(prefix, t, f)
 		if err != nil {
 			return fmt.Errorf("field %q: %w", t.Name, err)
 		}

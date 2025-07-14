@@ -16,6 +16,15 @@ func Filter[T any](list []T, fn func(T) bool) (ret []T) {
 	return
 }
 
+func FilterMap[T any, R any](list []T, fn func(T) (R, bool)) (ret []R) {
+	for _, v := range list {
+		if r, ok := fn(v); ok {
+			ret = append(ret, r)
+		}
+	}
+	return
+}
+
 func Unique[T comparable](list []T) (ret []T) {
 	m := make(map[T]struct{})
 	for _, v := range list {

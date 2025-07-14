@@ -10,7 +10,9 @@ import (
 )
 
 type EnvGetter interface {
+	// Get returns the value associated with a given variable name or an empty string if absent or empty
 	Get(key string) string
+	// List returns a list of all defined variable names
 	List() []string
 }
 
@@ -83,4 +85,39 @@ func EnvFromFile(path string) (EnvGetter, error) {
 		return nil, fmt.Errorf("scan file: %w", err)
 	}
 	return env, nil
+}
+
+// TrackingEnv tracks which environment variables have been fetched.
+type TrackingEnv struct {
+	fetched  map[string]struct{}
+	delegate EnvGetter
+}
+
+func NewTrackingEnv(delegate EnvGetter) *TrackingEnv {
+	return &TrackingEnv{
+		fetched:  make(map[string]struct{}),
+		delegate: delegate,
+	}
+}
+
+// Fetched returns the list of env keys that have been fetched (regardless of whether they existed or not)
+func (e *TrackingEnv) Fetched() []string {
+	return util.Keys(e.fetched)
+}
+
+// Unfetched returns the list of keys that have *not* been fetched.
+func (e *TrackingEnv) Unfetched() []string {
+	return util.Filter(e.delegate.List(), func(name string) bool {
+		_, found := e.fetched[name]
+		return !found
+	})
+}
+
+func (e *TrackingEnv) Get(key string) string {
+	e.fetched[key] = struct{}{}
+	return e.delegate.Get(key)
+}
+
+func (e *TrackingEnv) List() []string {
+	return e.delegate.List()
 }

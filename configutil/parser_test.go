@@ -28,7 +28,7 @@ type NestedConfig struct {
 func TestParse(t *testing.T) {
 	a := assert.New(t)
 	r := require.New(t)
-	cfg, err := Parse[TestConfig](MapEnv{"B": "b", "NESTED_CONFIG_X": "x"})
+	cfg, err := Parse[TestConfig](MapEnv{"B": "b", "NESTED_CONFIG_X": "x"}, "")
 	r.NoError(err)
 	a.Equal("a", cfg.A)
 	a.Equal("b", cfg.B)
@@ -40,7 +40,7 @@ func testTagsCase[T any](t *testing.T, name string, wantErrContains string) {
 	t.Run(name, func(t *testing.T) {
 		r := require.New(t)
 		env := MapEnv{"BOOL": "1", "NESTED_BOOL": "true"}
-		_, err := Parse[T](env)
+		_, err := Parse[T](env, "")
 		if wantErrContains != "" {
 			r.ErrorContains(err, wantErrContains)
 			fmt.Printf("expected error: %s\n", err.Error())
@@ -92,4 +92,25 @@ func TestTags(t *testing.T) {
 	//testTagsCase[struct {
 	//	Bool bool `default:"hi"`
 	//}](t, "unused default with invalid syntax", "invalid syntax")
+}
+
+func TestParsePrefix(t *testing.T) {
+	a := assert.New(t)
+	r := require.New(t)
+	type config struct {
+		A string `default:"a"`
+	}
+	cfg, err := Parse[config](MapEnv{"PFX_A": "a", "UNRELATED": "hi"}, "PFX_")
+	r.NoError(err)
+	a.Equal("a", cfg.A)
+}
+
+func TestParsePrefixFail(t *testing.T) {
+	r := require.New(t)
+	type config struct {
+		A string `default:"a"`
+	}
+	cfg, err := Parse[config](MapEnv{"PFX_B": "b"}, "PFX_")
+	r.Nil(cfg)
+	r.ErrorContains(err, "not all defined environment variables used in config: PFX_B")
 }
