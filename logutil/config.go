@@ -28,3 +28,11 @@ func (c Config) InstallForProcess() error {
 	InstallGoLogShim()
 	return nil
 }
+
+type ConfigEmbed struct {
+	Log Config
+}
+
+func (c ConfigEmbed) LogConfig() Config {
+	return c.Log
+}
