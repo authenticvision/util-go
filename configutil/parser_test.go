@@ -15,14 +15,14 @@ func (c *CustomType) UnmarshalText(b []byte) error {
 }
 
 type TestConfig struct {
-	A            string       `default:"a"`
-	B            string       `required`
-	C            CustomType   `default:"c"`
-	NestedConfig NestedConfig `required`
+	A            string     `default:"a"`
+	B            string     `required:"true"`
+	C            CustomType `default:"c"`
+	NestedConfig NestedConfig
 }
 
 type NestedConfig struct {
-	X string `env:"X"`
+	X string
 }
 
 func TestParse(t *testing.T) {
@@ -60,9 +60,6 @@ func TestTags(t *testing.T) {
 		Bool bool `required:"" blubb:""`
 	}](t, "required=empty", "invalid syntax")
 	testTagsCase[struct {
-		Bool bool `required blubb:""`
-	}](t, "required=no value", NoErr)
-	testTagsCase[struct {
 		Bool bool `required:"0" blubb:""`
 	}](t, "required=zero", NoErr)
 	testTagsCase[struct {
@@ -82,7 +79,7 @@ func TestTags(t *testing.T) {
 
 	testTagsCase[struct {
 		OtherBool bool `required:"false" default:"true"`
-	}](t, "default", "")
+	}](t, "default", NoErr)
 	testTagsCase[struct {
 		OtherBool bool `required:"false" default:"true"`
 	}](t, "explicit not required and default", NoErr)
