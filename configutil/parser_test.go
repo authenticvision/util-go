@@ -36,11 +36,14 @@ func TestParse(t *testing.T) {
 	a.Equal("x", cfg.NestedConfig.X)
 }
 
-func testTagsCase[T any](t *testing.T, name string, wantErrContains string) {
+func testTagsCase[T any](t *testing.T, name string, wantErrContains string, checks ...func(*require.Assertions, *T, error)) {
 	t.Run(name, func(t *testing.T) {
 		r := require.New(t)
 		env := MapEnv{"BOOL": "1", "NESTED_BOOL": "true"}
-		_, err := Parse[T](env, "")
+		cfg, err := Parse[T](env, "")
+		for _, check := range checks {
+			check(r, cfg, err)
+		}
 		if wantErrContains != "" {
 			r.ErrorContains(err, wantErrContains)
 			fmt.Printf("expected error: %s\n", err.Error())
@@ -89,6 +92,21 @@ func TestTags(t *testing.T) {
 	//testTagsCase[struct {
 	//	Bool bool `default:"hi"`
 	//}](t, "unused default with invalid syntax", "invalid syntax")
+	type embeddedStruct struct {
+		Bool bool `required:"true"`
+	}
+	testTagsCase[struct {
+		embeddedStruct
+	}](t, "embedded struct", NoErr, func(r *require.Assertions, s *struct{ embeddedStruct }, err error) {
+		r.NoError(err)
+		r.Equal(true, s.Bool)
+	})
+	type otherEmbeddedStruct struct {
+		OtherBool bool `required:"true"`
+	}
+	testTagsCase[struct {
+		otherEmbeddedStruct
+	}](t, "embedded struct with missing required value", "environment variable OTHER_BOOL: required field is not set")
 }
 
 func TestParsePrefix(t *testing.T) {

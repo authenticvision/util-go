@@ -94,11 +94,17 @@ type configValue struct {
 var ErrRequired = errors.New("required field is not set")
 
 func (p *parser) parseValue(prefix string, field reflect.StructField, value reflect.Value) error {
-	if !field.IsExported() {
+	if !(field.IsExported() || field.Anonymous) {
 		return nil
 	}
-	name := prefix + strcase.ToScreamingSnake(field.Name)
-	prefix = name + "_"
+	var name string
+	if !field.Anonymous {
+		name = prefix + strcase.ToScreamingSnake(field.Name)
+		prefix = name + "_"
+	} else {
+		name = strings.TrimSuffix(prefix, "_")
+	}
+
 	required, err := parseRequiredTag(field)
 	if err != nil {
 		return err
@@ -262,7 +268,7 @@ type ConfigValueError struct {
 }
 
 func (e ConfigValueError) Error() string {
-	return fmt.Sprintf("env var %s: %s", e.EnvVar, e.err.Error())
+	return fmt.Sprintf("environment variable %s: %s", e.EnvVar, e.err.Error())
 }
 
 func (e ConfigValueError) Unwrap() error {
