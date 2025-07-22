@@ -241,7 +241,7 @@ func (p *parser) parsePrimitive(dest reflect.Value, value string) error {
 	case reflect.Int32:
 		return parseInt(32)
 	case reflect.Int, reflect.Int64:
-		return parseUint(64)
+		return parseInt(64)
 	case reflect.Uint8:
 		return parseUint(8)
 	case reflect.Uint16:
