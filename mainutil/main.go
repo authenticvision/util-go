@@ -49,7 +49,7 @@ func Main[ConfigType interface{ LogConfig() logutil.Config }](name string, confi
 			// SIGTERM'd
 			return
 		}
-		slog.Error("error running server", logutil.Err(err))
+		slog.Error("unhandled error", logutil.Err(err))
 		os.Exit(1)
 	}
 }
