@@ -5,8 +5,8 @@ go 1.24
 require (
 	github.com/IBM/sarama v1.45.2
 	github.com/iancoleman/strcase v0.3.0
-	github.com/jackc/pgx/v5 v5.7.2
-	github.com/lmittmann/tint v1.0.6
+	github.com/jackc/pgx/v5 v5.7.5
+	github.com/lmittmann/tint v1.0.7
 	github.com/mattn/go-isatty v0.0.20
 	github.com/stretchr/testify v1.10.0
 )
@@ -29,7 +29,7 @@ require (
 	github.com/jcmturner/gokrb5/v8 v8.4.4 // indirect
 	github.com/jcmturner/rpc/v2 v2.0.3 // indirect
 	github.com/klauspost/compress v1.18.0 // indirect
-	github.com/kr/text v0.1.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.22 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rcrowley/go-metrics v0.0.0-20201227073835-cf1acfcdf475 // indirect
