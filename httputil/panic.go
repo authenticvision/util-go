@@ -1,21 +1,18 @@
 package httputil
 
 import (
+	"github.com/authenticvision/util-go/logutil"
 	"log/slog"
 	"net/http"
 	"runtime/debug"
 )
 
 type panicHandler struct {
-	log  *slog.Logger
 	next http.Handler
 }
 
-func PanicHandler(log *slog.Logger, next http.Handler) http.Handler {
-	return &panicHandler{
-		log:  log,
-		next: next,
-	}
+func PanicHandler(next http.Handler) http.Handler {
+	return &panicHandler{next: next}
 }
 
 func (h *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -24,7 +21,8 @@ func (h *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == http.ErrAbortHandler {
 				panic(err)
 			}
-			h.log.Error("http handler panic",
+			log := logutil.FromContext(r.Context())
+			log.Error("http handler panic",
 				slog.Any("error", err),
 				slog.String("stack", string(debug.Stack())))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
