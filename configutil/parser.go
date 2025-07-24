@@ -4,10 +4,12 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
-	"git.avdev.at/dev/util"
+	"github.com/BooleanCat/go-functional/v2/it"
+	"github.com/BooleanCat/go-functional/v2/it/itx"
 	"github.com/iancoleman/strcase"
 	"os"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 )
@@ -46,9 +48,9 @@ func Parse[T any](env EnvGetter, prefix string) (*T, error) {
 		return nil, errs
 	}
 	if prefix != "" {
-		extra := util.Filter(trackingEnv.Unfetched(), func(s string) bool {
+		extra := itx.FromSlice(trackingEnv.Unfetched()).Filter(func(s string) bool {
 			return strings.HasPrefix(s, prefix)
-		})
+		}).Collect()
 		if len(extra) > 0 {
 			return nil, ExtraEnvVarsError(extra)
 		}
@@ -280,15 +282,15 @@ type configErrors []ConfigValueError
 func (c configErrors) Error() string {
 	return fmt.Sprintf(
 		"one or more config errors have occured: %s",
-		strings.Join(util.Map(c, func(cve ConfigValueError) string {
+		strings.Join(slices.Collect(it.Map(slices.Values(c), func(cve ConfigValueError) string {
 			return cve.Error()
-		}), "; "))
+		})), "; "))
 }
 
 func (c configErrors) Unwrap() []error {
-	return util.Map(c, func(cve ConfigValueError) error {
+	return slices.Collect(it.Map(slices.Values(c), func(cve ConfigValueError) error {
 		return cve
-	})
+	}))
 }
 
 func (p *parser) execute(env EnvGetter) configErrors {

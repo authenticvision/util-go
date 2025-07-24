@@ -5,7 +5,7 @@ import (
 	"errors"
 	"git.avdev.at/dev/util/buildinfo"
 	"git.avdev.at/dev/util/configutil"
-	"git.avdev.at/dev/util/logutil"
+	"github.com/authenticvision/util-go/logutil"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -52,4 +52,12 @@ func Main[ConfigType interface{ LogConfig() logutil.Config }](name string, confi
 		slog.Error("unhandled error", logutil.Err(err))
 		os.Exit(1)
 	}
+}
+
+type ConfigEmbed struct {
+	Log logutil.Config
+}
+
+func (c ConfigEmbed) LogConfig() logutil.Config {
+	return c.Log
 }

@@ -3,7 +3,9 @@ package configutil
 import (
 	"bufio"
 	"fmt"
-	"git.avdev.at/dev/util"
+	"github.com/BooleanCat/go-functional/v2/it"
+	"github.com/BooleanCat/go-functional/v2/it/itx"
+	"maps"
 	"os"
 	"slices"
 	"strings"
@@ -23,7 +25,7 @@ func (e MapEnv) Get(key string) string {
 }
 
 func (e MapEnv) List() []string {
-	return util.Keys(e)
+	return slices.Collect(maps.Keys(e))
 }
 
 type OSEnv struct{}
@@ -34,13 +36,13 @@ func (e OSEnv) Get(key string) string {
 
 func (e OSEnv) List() []string {
 	// TODO: windows support, see os.Getenv for windows
-	return util.Map(os.Environ(), func(s string) string {
+	return itx.FromSlice(os.Environ()).Transform(func(s string) string {
 		name, _, found := strings.Cut(s, "=")
 		if !found || name == "" {
 			panic(fmt.Sprintf("invalid environment variable string %q", s))
 		}
 		return name
-	})
+	}).Collect()
 }
 
 type FallbackEnv struct {
@@ -57,7 +59,9 @@ func (e FallbackEnv) Get(key string) string {
 }
 
 func (e FallbackEnv) List() []string {
-	return util.Unique(slices.Concat(e.Primary.List(), e.Fallback.List()))
+	a := slices.Values(e.Primary.List())
+	b := slices.Values(e.Fallback.List())
+	return slices.Collect(it.FilterUnique(it.Chain(a, b)))
 }
 
 func EnvFromFile(path string) (EnvGetter, error) {
@@ -102,15 +106,15 @@ func NewTrackingEnv(delegate EnvGetter) *TrackingEnv {
 
 // Fetched returns the list of env keys that have been fetched (regardless of whether they existed or not)
 func (e *TrackingEnv) Fetched() []string {
-	return util.Keys(e.fetched)
+	return slices.Collect(maps.Keys(e.fetched))
 }
 
 // Unfetched returns the list of keys that have *not* been fetched.
 func (e *TrackingEnv) Unfetched() []string {
-	return util.Filter(e.delegate.List(), func(name string) bool {
+	return itx.FromSlice(e.delegate.List()).Filter(func(name string) bool {
 		_, found := e.fetched[name]
 		return !found
-	})
+	}).Collect()
 }
 
 func (e *TrackingEnv) Get(key string) string {

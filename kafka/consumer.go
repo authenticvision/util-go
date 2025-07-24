@@ -3,8 +3,8 @@ package kafka
 import (
 	"context"
 	"fmt"
-	"git.avdev.at/dev/util/logutil"
 	"github.com/IBM/sarama"
+	"github.com/authenticvision/util-go/logutil"
 )
 
 type ConsumerConfig struct {
