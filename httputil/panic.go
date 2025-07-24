@@ -7,12 +7,20 @@ import (
 	"runtime/debug"
 )
 
-type panicHandler struct {
+type PanicMiddleware struct {
 	next http.Handler
 }
 
-func PanicHandler(next http.Handler) http.Handler {
+func (m *PanicMiddleware) Middleware(next http.Handler) http.Handler {
 	return &panicHandler{next: next}
+}
+
+func NewPanicMiddleware() *PanicMiddleware {
+	return &PanicMiddleware{}
+}
+
+type panicHandler struct {
+	next http.Handler
 }
 
 func (h *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
