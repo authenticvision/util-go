@@ -1,7 +1,6 @@
-package httputil
+package httpmw
 
 import (
-	"context"
 	"net/http"
 )
 
@@ -14,9 +13,4 @@ func Chain(handler http.Handler, middlewares ...Middleware) http.Handler {
 		handler = middleware.Middleware(handler)
 	}
 	return handler
-}
-
-func RequestWithValue[T any](r *http.Request, value *T) *http.Request {
-	var tag *T
-	return r.WithContext(context.WithValue(r.Context(), tag, value))
 }

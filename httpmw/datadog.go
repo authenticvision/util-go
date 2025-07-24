@@ -1,4 +1,4 @@
-package httplog
+package httpmw
 
 import (
 	"net"

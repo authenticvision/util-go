@@ -1,4 +1,4 @@
-package httplog
+package httpmw
 
 import (
 	"bufio"
@@ -10,28 +10,24 @@ import (
 	"time"
 )
 
-type Middleware struct {
+func NewLogMiddleware(log *slog.Logger) *LogMiddleware {
+	return &LogMiddleware{log: log}
+}
+
+type LogMiddleware struct {
 	log *slog.Logger
 }
 
-func (m *Middleware) Middleware(next http.Handler) http.Handler {
-	return Wrap(m.log, next)
+func (m *LogMiddleware) Middleware(next http.Handler) http.Handler {
+	return &logHandler{log: m.log, next: next}
 }
 
-func NewMiddleware(log *slog.Logger) *Middleware {
-	return &Middleware{log: log}
-}
-
-func Wrap(log *slog.Logger, next http.Handler) http.Handler {
-	return &wrappedHandler{log: log, next: next}
-}
-
-type wrappedHandler struct {
+type logHandler struct {
 	log  *slog.Logger
 	next http.Handler
 }
 
-func (mid *wrappedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (mid *logHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	log := mid.log.With(slog.String("request_id", uuid.NewString()))
 	hook := interceptStatusCode(w)
 	now := time.Now()

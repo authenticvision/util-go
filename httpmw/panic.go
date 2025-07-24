@@ -1,4 +1,4 @@
-package httputil
+package httpmw
 
 import (
 	"github.com/authenticvision/util-go/logutil"
@@ -7,16 +7,16 @@ import (
 	"runtime/debug"
 )
 
+func NewPanicMiddleware() *PanicMiddleware {
+	return &PanicMiddleware{}
+}
+
 type PanicMiddleware struct {
 	next http.Handler
 }
 
 func (m *PanicMiddleware) Middleware(next http.Handler) http.Handler {
 	return &panicHandler{next: next}
-}
-
-func NewPanicMiddleware() *PanicMiddleware {
-	return &PanicMiddleware{}
 }
 
 type panicHandler struct {
