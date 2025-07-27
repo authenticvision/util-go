@@ -1,7 +1,7 @@
 package buildinfo
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -52,7 +52,18 @@ func init() {
 }
 
 var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	w.Header().Add("Content-Type", "text/plain")
-	_, _ = fmt.Fprintf(w, "commit: %v\ncommit date: %v\n",
-		GitCommit, GitCommitDate)
+	type response struct {
+		GitCommit     string    `json:"git_commit"`
+		GitCommitDate time.Time `json:"git_commit_date"`
+		Version       string    `json:"version,omitempty"`
+	}
+	resp := response{
+		GitCommit:     GitCommit,
+		GitCommitDate: GitCommitDate,
+		Version:       Version,
+	}
+	w.Header().Add("Content-Type", "application/json")
+	jw := json.NewEncoder(w)
+	jw.SetIndent("", "  ")
+	_ = jw.Encode(resp)
 })
