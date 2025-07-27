@@ -19,6 +19,10 @@ var (
 
 	// GitCommitDate is derived from buildinfo.gitCommitUnixTS or debug VCS info
 	GitCommitDate time.Time
+
+	// Version is set via:
+	// -X github.com/authenticvision/util-go/buildinfo.Version=${GIT_VERSION}
+	Version string
 )
 
 func init() {
@@ -29,6 +33,7 @@ func init() {
 		}
 		GitCommitDate = time.Unix(i, 0)
 	}
+
 	if GitCommit == "" || GitCommitDate.IsZero() {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, setting := range info.Settings {

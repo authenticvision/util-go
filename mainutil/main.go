@@ -55,6 +55,14 @@ func RootCommand[T LogConfigEmbedder](setup nicecmd.Hook[T], run nicecmd.Hook[T]
 	cmd.SilenceErrors = true        // for logging them ourselves via slog
 	cmd.SilenceUsage = InKubernetes // to avoid noise, though locally this is quite helpful
 
+	if cmd.Version == "" {
+		if buildinfo.Version != "" {
+			cmd.Version = buildinfo.Version
+		} else {
+			cmd.Version = buildinfo.GitCommit
+		}
+	}
+
 	return cmd
 }
 
@@ -110,6 +118,10 @@ func LogVersion(cmd *cobra.Command) {
 		slog.String("git_commit", buildinfo.GitCommit),
 		slog.Any("git_commit_date", buildinfo.GitCommitDate),
 	}
+	if buildinfo.Version != "" {
+		attrs = append(attrs, slog.String("version", buildinfo.Version))
+	}
+
 	ctx := cmd.Context()
 	log := logutil.FromContext(ctx)
 	log.InfoContext(ctx, "starting "+cmd.Root().DisplayName(), attrs...)
