@@ -11,6 +11,7 @@ require (
 	github.com/mologie/nicecmd v0.2.0
 	github.com/spf13/cobra v1.9.1
 	github.com/spf13/pflag v1.0.7
+	go.uber.org/automaxprocs v1.6.0
 )
 
 require (
@@ -34,5 +35,6 @@ require (
 	github.com/rcrowley/go-metrics v0.0.0-20250401214520-65e299d6c5c9 // indirect
 	golang.org/x/crypto v0.40.0 // indirect
 	golang.org/x/net v0.42.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.34.0 // indirect
 )
