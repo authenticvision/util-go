@@ -2,8 +2,12 @@ package logutil
 
 import (
 	"fmt"
+	"github.com/BooleanCat/go-functional/v2/it/op"
+	"github.com/spf13/pflag"
 	"strings"
 )
+
+var _ pflag.Value = op.Ref(FormatText)
 
 type Format string
 
@@ -22,10 +26,14 @@ func (f *Format) UnmarshalText(text []byte) error {
 	return fmt.Errorf("invalid log format text: %q", text)
 }
 
+func (f *Format) Set(s string) error {
+	return f.UnmarshalText([]byte(s))
+}
+
 func (f *Format) String() string {
 	return string(*f)
 }
 
-func (f *Format) CmdTypeDesc() string {
+func (f *Format) Type() string {
 	return "format"
 }

@@ -1,9 +1,13 @@
 package logutil
 
 import (
+	"github.com/BooleanCat/go-functional/v2/it/op"
+	"github.com/spf13/pflag"
 	"log/slog"
 	"strings"
 )
+
+var _ pflag.Value = op.Ref(Level(0))
 
 type Level slog.Level
 
@@ -25,7 +29,11 @@ func (l *Level) String() string {
 	}
 }
 
-func (l *Level) CmdTypeDesc() string {
+func (l *Level) Set(s string) error {
+	return l.UnmarshalText([]byte(s))
+}
+
+func (l *Level) Type() string {
 	return "level"
 }
 
