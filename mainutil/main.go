@@ -19,15 +19,27 @@ var InKubernetes = func() bool {
 }()
 
 // Main is equivalent to calling RootCommand, followed by Run. It does not return.
-func Main[T LogConfigEmbedder](setup nicecmd.Hook[T], run nicecmd.Hook[T], cmdTmpl cobra.Command, cfg T) {
-	Run(RootCommand(setup, run, cmdTmpl, cfg))
+func Main[T LogConfigEmbedder](
+	setup nicecmd.Hook[T],
+	run nicecmd.Hook[T],
+	cmdTmpl cobra.Command,
+	cfg T,
+	opts ...nicecmd.Option,
+) {
+	Run(RootCommand(setup, run, cmdTmpl, cfg, opts...))
 }
 
 // RootCommand creates a cobra.Command through nicecmd.RootCommand.
 // The setup function is always run before any sub-command, but after global context setup (logger, etc.).
 // The run function is run only when the main command is run, and is wrapped to print version info.
 // Both are optional, i.e. it's fine for the root command to have no setup or no run line.
-func RootCommand[T LogConfigEmbedder](setup nicecmd.Hook[T], run nicecmd.Hook[T], cmdTmpl cobra.Command, cfg T) *cobra.Command {
+func RootCommand[T LogConfigEmbedder](
+	setup nicecmd.Hook[T],
+	run nicecmd.Hook[T],
+	cmdTmpl cobra.Command,
+	cfg T,
+	opts ...nicecmd.Option,
+) *cobra.Command {
 	if setup != nil {
 		setupNext := setup
 		setup = func(cfg *T, cmd *cobra.Command, args []string) error {
@@ -51,7 +63,7 @@ func RootCommand[T LogConfigEmbedder](setup nicecmd.Hook[T], run nicecmd.Hook[T]
 		}
 	}
 
-	cmd := nicecmd.RootCommand(nicecmd.SetupAndRun(setup, run), cmdTmpl, cfg)
+	cmd := nicecmd.RootCommand(nicecmd.SetupAndRun(setup, run), cmdTmpl, cfg, opts...)
 	cmd.SilenceErrors = true        // for logging them ourselves via slog
 	cmd.SilenceUsage = InKubernetes // to avoid noise, though locally this is quite helpful
 
