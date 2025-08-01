@@ -104,11 +104,21 @@ func setupContext[T LogConfigEmbedder](cfg *T, cmd *cobra.Command, args []string
 	return nil
 }
 
+type signalStopTag struct{}
+
+// RestoreSignals restores default signal behavior for programs set up through RootCommand.
+// This is useful for utility sub-commands which run in a terminal.
+func RestoreSignals(ctx context.Context) {
+	stop := ctx.Value(signalStopTag{}).(context.CancelFunc)
+	stop()
+}
+
 // Run executes the given command and exits with an appropriate status code.
 // The command's context is canceled upon SIGINT or SIGTERM.
 func Run(cmd *cobra.Command) {
 	err := func() error {
 		ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+		ctx = context.WithValue(ctx, signalStopTag{}, stop)
 		ctx = logutil.WithLogContext(ctx, slog.Default()) // usually unused, hit with e.g. --help
 		defer stop()
 		return cmd.ExecuteContext(ctx)
