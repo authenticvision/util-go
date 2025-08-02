@@ -60,9 +60,9 @@ var NameLevels = func() map[string]slog.Level {
 
 func LevelAttrReplacer(_ []string, a slog.Attr) slog.Attr {
 	if a.Key == slog.LevelKey {
-		if level, isLevel := a.Value.Any().(slog.Level); isLevel {
-			if name, ok := LevelNames[level]; ok {
-				a.Value = slog.StringValue(name)
+		if level, ok := a.Value.Any().(slog.Level); ok {
+			if label, ok := LevelNames[level]; ok {
+				a.Value = slog.StringValue(label)
 			}
 		}
 	}
