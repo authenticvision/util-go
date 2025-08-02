@@ -1,10 +1,10 @@
 package httpmw
 
 import (
+	"fmt"
 	"github.com/authenticvision/util-go/logutil"
 	"log/slog"
 	"net/http"
-	"runtime/debug"
 )
 
 func NewPanicMiddleware() *PanicMiddleware {
@@ -29,10 +29,16 @@ func (h *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			if err == http.ErrAbortHandler {
 				panic(err)
 			}
+
+			var errAttr slog.Attr
+			if e, ok := err.(error); ok {
+				errAttr = logutil.Err(e)
+			} else {
+				errAttr = logutil.ErrColor(slog.String(logutil.KeyErr, fmt.Sprintf("panic: %v", err)))
+			}
+
 			log := logutil.FromContext(r.Context())
-			log.Error("http handler panic",
-				slog.Any("error", err),
-				slog.String("stack", string(debug.Stack())))
+			log.Error("http handler panic", errAttr, logutil.Stack(3))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}()
