@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/authenticvision/util-go/httpmw"
+	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/mologie/nicecmd"
 	"github.com/spf13/cobra"
@@ -17,10 +18,10 @@ import (
 // ShutdownTimeout is the grace period that requests have to finish after shutdown is requested.
 var ShutdownTimeout = 20 * time.Second
 
-type ServerMain[T any] func(cfg *T, cmd *cobra.Command, args []string) (http.Handler, error)
+type ServerMain[T any] func(cfg *T, cmd *cobra.Command, args []string) (httpp.Handler, error)
 
 // Server is a convenience function for single-purpose HTTP servers that require no additional
-// setup or teardown. It should wrap a function that returns an http.Handler for mainutil.Main.
+// setup or teardown. It should wrap a function that returns an httpp.Handler for mainutil.Main.
 func Server[T ServerConfigEmbedder](serverMain ServerMain[T]) nicecmd.Hook[T] {
 	return func(cfg *T, cmd *cobra.Command, args []string) error {
 		addr := (*cfg).ServerConfigEmbed().BindAddr
@@ -34,7 +35,7 @@ func Server[T ServerConfigEmbedder](serverMain ServerMain[T]) nicecmd.Hook[T] {
 	}
 }
 
-func ListenAndServe(ctx context.Context, addr string, handler http.Handler) error {
+func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) error {
 	log := logutil.FromContext(ctx)
 
 	l, err := net.Listen("tcp", addr)
@@ -50,10 +51,10 @@ func ListenAndServe(ctx context.Context, addr string, handler http.Handler) erro
 	defer reqCancel()
 	server := &http.Server{
 		Addr: addr,
-		Handler: httpmw.Chain(handler,
+		Handler: httpp.NeverErrors(httpmw.Chain(handler,
 			httpmw.NewPanicMiddleware(),
 			httpmw.NewLogMiddleware(log),
-		),
+		)),
 		BaseContext: func(net.Listener) context.Context {
 			// Requests are not launched from cmd's context (which is canceled on SIGTERM), but
 			// instead from context.Background. They get a grace period of 20 seconds to complete
