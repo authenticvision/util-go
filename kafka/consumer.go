@@ -57,8 +57,12 @@ func (k Kafka) NewConsumer(config ConsumerConfig) (*Consumer, error) {
 func (c *Consumer) Consume(ctx context.Context, consumerFn func(context.Context, *sarama.ConsumerMessage) error) error {
 	log := logutil.FromContext(ctx)
 	ctx, cancel := context.WithCancelCause(ctx)
+
 	for {
-		err := c.ConsumerGroup.Consume(ctx, []string{c.Topic}, ConsumerFunc(func(session sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
+		err := c.ConsumerGroup.Consume(ctx, []string{c.Topic}, ConsumerFunc(func(
+			session sarama.ConsumerGroupSession,
+			claim sarama.ConsumerGroupClaim,
+		) error {
 			// note: returning errors from this function does effectively nothing unless we also cancel the context
 			for {
 				select {
@@ -82,11 +86,13 @@ func (c *Consumer) Consume(ctx context.Context, consumerFn func(context.Context,
 					// to be commited. This will be picked up by autocommit.
 					// Alternatively this would require a session.Commit() here.
 					session.MarkMessage(message, "")
+
 				case <-session.Context().Done():
 					return nil
 				}
 			}
 		}))
+
 		if cause := context.Cause(ctx); cause != nil {
 			return fmt.Errorf("consume ctx: %w", cause)
 		} else if err != nil {
