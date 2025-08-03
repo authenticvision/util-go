@@ -2,6 +2,7 @@ package httpmw
 
 import (
 	"bufio"
+	"errors"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/google/uuid"
@@ -48,8 +49,15 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	level := slog.LevelInfo
 	if err != nil {
 		httpp.WriteError(hookedW, err)
-		level = slog.LevelError
-		log = log.With(logutil.Err(err))
+
+		var errLeveler slog.Leveler
+		if errors.As(err, &errLeveler) {
+			level = errLeveler.Level()
+		} else {
+			level = slog.LevelError
+		}
+
+		log = logutil.Destructure(err, log)
 	}
 
 	log.Log(ctx, level, "HTTP request")

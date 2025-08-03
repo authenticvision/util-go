@@ -2,6 +2,8 @@ package httpp
 
 import (
 	"encoding/json"
+	"github.com/authenticvision/util-go/logutil"
+	"log/slog"
 	"net/http"
 	"strconv"
 )
@@ -25,26 +27,26 @@ func JSON(w http.ResponseWriter, resp any) error {
 	_, err = w.Write(buf)
 	if err != nil {
 		// This usually fails with an I/O error when the client disconnects unexpectedly.
-		return ServerError(err, "JSON write failure")
+		return logutil.Severity(ServerError(err, "JSON write failure"), slog.LevelWarn)
 	}
 
 	return nil
 }
 
 func BadRequest(err error, public ClientMessage) error {
-	return Err(err, http.StatusBadRequest, public)
+	return logutil.Severity(Err(err, http.StatusBadRequest, public), slog.LevelWarn)
 }
 
 func Unauthorized(public ClientMessage) error {
-	return Err(nil, http.StatusUnauthorized, public)
+	return logutil.Severity(Err(nil, http.StatusUnauthorized, public), slog.LevelWarn)
 }
 
 func Forbidden(public ClientMessage) error {
-	return Err(nil, http.StatusForbidden, public)
+	return logutil.Severity(Err(nil, http.StatusForbidden, public), slog.LevelWarn)
 }
 
 func Unprocessable(err error, public ClientMessage) error {
-	return Err(err, http.StatusUnprocessableEntity, public)
+	return logutil.Severity(Err(err, http.StatusUnprocessableEntity, public), slog.LevelWarn)
 }
 
 func ServerError(err error, public ClientMessage) error {

@@ -13,7 +13,7 @@ type PanicError struct {
 }
 
 func (e PanicError) Error() string {
-	return fmt.Sprintf("panic: %v", e.Value)
+	return fmt.Sprintf("%v", e.Value)
 }
 
 func (e PanicError) Unwrap() error {
@@ -46,9 +46,7 @@ func (h *panicHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) (res
 			if rec == http.ErrAbortHandler {
 				panic(rec)
 			}
-			err := PanicError{Value: rec}
-			log := logutil.FromContext(r.Context())
-			log.Error("http handler panic", logutil.Err(err), logutil.Stack(3))
+			err := logutil.RootScope.Err(PanicError{Value: rec}, "http handler panic", logutil.Stack(3))
 			result = httpp.ServerError(err, httpp.DefaultMessage)
 		}
 	}()
