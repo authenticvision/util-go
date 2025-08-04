@@ -2,6 +2,7 @@ package httpmw
 
 import (
 	"bufio"
+	"context"
 	"errors"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
@@ -51,7 +52,13 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 		httpp.WriteError(hookedW, err)
 
 		var errLeveler slog.Leveler
-		if errors.As(err, &errLeveler) {
+		if errors.Is(err, context.Canceled) {
+			log = log.With(slog.Bool("canceled", true))
+			// Context cancellation happens when the browser closes/aborts a connection, which then
+			// cascades to any running sub-requests on the server. This includes some error
+			// scenarios, like a network-level timeout or I/O error. Regardless, log this cascade
+			// of errors is intentional, hence always log it with info level.
+		} else if errors.As(err, &errLeveler) {
 			level = errLeveler.Level()
 		} else {
 			level = slog.LevelError
