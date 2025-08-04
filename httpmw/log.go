@@ -3,6 +3,7 @@ package httpmw
 import (
 	"context"
 	"errors"
+	"github.com/authenticvision/util-go/httpmw/internal/ddlog"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/google/uuid"
@@ -45,13 +46,16 @@ type logHandler struct {
 }
 
 func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error {
+	id := uuid.New()
+
+	// attach logger and extendable scope to context
 	var opts accessLog
-	hookedW := &httpStatusRecorder{ResponseWriter: w}
-	log := h.log.With(slog.String("request_id", uuid.NewString()))
-	ctx := logutil.WithLogContext(r.Context(), log)
+	ctx := logutil.WithLogContext(r.Context(), ddlog.WithRequest(h.log, r, id))
 	ctx = context.WithValue(ctx, accessLogTag{}, &opts)
 	r = r.WithContext(ctx)
 
+	// run request
+	hookedW := &httpStatusRecorder{ResponseWriter: w}
 	start := time.Now()
 	err := h.next.ServeErrHTTP(hookedW, r)
 	duration := time.Since(start)
@@ -60,11 +64,11 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 		// hookedW.statusCode is available now in case of errors
 	}
 
-	log = log.With(
-		slog.Duration("duration", duration),
-		slog.Any("http", makeDatadogHttpValue(r, hookedW.statusCode)),
-		slog.Any("network", makeDatadogNetworkValue(r)))
+	// attach request+response telemetry
+	log := h.log.With(slog.Duration("duration", duration))
+	log = ddlog.WithResponse(log, r, id, hookedW)
 
+	// attach request error, if any
 	level := slog.LevelInfo
 	if err != nil {
 		var errLeveler slog.Leveler
@@ -93,12 +97,14 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 var _ interface {
 	http.ResponseWriter
 	httpp.ResponseWriterUnwrapper
+	ddlog.HttpStatusRecorder
 } = &httpStatusRecorder{}
 
 type httpStatusRecorder struct {
 	http.ResponseWriter
-	wroteHeader bool
-	statusCode  int
+	wroteHeader  bool
+	statusCode   int
+	bytesWritten uint64
 }
 
 func (hook *httpStatusRecorder) Unwrap() http.ResponseWriter {
@@ -117,5 +123,15 @@ func (hook *httpStatusRecorder) Write(b []byte) (int, error) {
 	if !hook.wroteHeader {
 		hook.WriteHeader(http.StatusOK)
 	}
-	return hook.ResponseWriter.Write(b)
+	n, err := hook.ResponseWriter.Write(b)
+	hook.bytesWritten += uint64(n)
+	return n, err
+}
+
+func (hook *httpStatusRecorder) StatusCode() int {
+	return hook.statusCode
+}
+
+func (hook *httpStatusRecorder) BytesWritten() uint64 {
+	return hook.bytesWritten
 }
