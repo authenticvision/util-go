@@ -41,6 +41,10 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	start := time.Now()
 	err := h.next.ServeErrHTTP(hookedW, r)
 	duration := time.Since(start)
+	if err != nil {
+		httpp.WriteError(hookedW, err)
+		// hookedW.statusCode is available now in case of errors
+	}
 
 	log = log.With(
 		slog.Duration("duration", duration),
@@ -49,8 +53,6 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 
 	level := slog.LevelInfo
 	if err != nil {
-		httpp.WriteError(hookedW, err)
-
 		var errLeveler slog.Leveler
 		if errors.Is(err, context.Canceled) {
 			log = log.With(slog.Bool("canceled", true))
