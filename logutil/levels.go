@@ -68,3 +68,30 @@ func LevelAttrReplacer(_ []string, a slog.Attr) slog.Attr {
 	}
 	return a
 }
+
+// Severity attaches a log level to an error chain.
+func Severity(err error, level slog.Level) error {
+	if err == nil {
+		panic("logutil.Severity: err must not be nil")
+	}
+	return &severityError{err: err, level: level}
+}
+
+var _ slog.Leveler = &severityError{}
+
+type severityError struct {
+	err   error
+	level slog.Level
+}
+
+func (e severityError) Error() string {
+	return e.err.Error()
+}
+
+func (e severityError) Unwrap() error {
+	return e.err
+}
+
+func (e severityError) Level() slog.Level {
+	return e.level
+}

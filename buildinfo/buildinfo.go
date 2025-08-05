@@ -1,7 +1,7 @@
 package buildinfo
 
 import (
-	"encoding/json"
+	"github.com/authenticvision/util-go/httpp"
 	"net/http"
 	"runtime/debug"
 	"strconv"
@@ -51,19 +51,15 @@ func init() {
 	}
 }
 
-var Handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+var Handler = httpp.EmitErrorsFunc(func(w http.ResponseWriter, r *http.Request) error {
 	type response struct {
 		GitCommit     string    `json:"git_commit"`
 		GitCommitDate time.Time `json:"git_commit_date"`
 		Version       string    `json:"version,omitempty"`
 	}
-	resp := response{
+	return httpp.JSON(w, response{
 		GitCommit:     GitCommit,
 		GitCommitDate: GitCommitDate,
 		Version:       Version,
-	}
-	w.Header().Add("Content-Type", "application/json")
-	jw := json.NewEncoder(w)
-	jw.SetIndent("", "  ")
-	_ = jw.Encode(resp)
+	})
 })

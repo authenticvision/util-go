@@ -1,41 +1,54 @@
 package httpmw
 
 import (
+	"fmt"
+	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
-	"log/slog"
 	"net/http"
-	"runtime/debug"
 )
 
-func NewPanicMiddleware() *PanicMiddleware {
-	return &PanicMiddleware{}
+// PanicError wraps a panic value and is returned when a handler panics.
+type PanicError struct {
+	Value any
 }
 
-type PanicMiddleware struct {
-	next http.Handler
+func (e PanicError) Error() string {
+	return fmt.Sprintf("%v", e.Value)
 }
 
-func (m *PanicMiddleware) Middleware(next http.Handler) http.Handler {
+func (e PanicError) Unwrap() error {
+	if err, ok := e.Value.(error); ok {
+		return err
+	}
+	return nil
+}
+
+// NewPanicMiddleware logs handler panics and returns them as error via PanicError.
+func NewPanicMiddleware() Middleware {
+	return &panicMiddleware{}
+}
+
+type panicMiddleware struct {
+	next httpp.Handler
+}
+
+func (m *panicMiddleware) Middleware(next httpp.Handler) httpp.Handler {
 	return &panicHandler{next: next}
 }
 
 type panicHandler struct {
-	next http.Handler
+	next httpp.Handler
 }
 
-func (h *panicHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (h *panicHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) (result error) {
 	defer func() {
-		if err := recover(); err != nil {
-			if err == http.ErrAbortHandler {
-				panic(err)
+		if rec := recover(); rec != nil {
+			if rec == http.ErrAbortHandler {
+				panic(rec)
 			}
-			log := logutil.FromContext(r.Context())
-			log.Error("http handler panic",
-				slog.Any("error", err),
-				slog.String("stack", string(debug.Stack())))
-			http.Error(w, "internal server error", http.StatusInternalServerError)
+			err := logutil.RootScope.Err(PanicError{Value: rec}, "http handler panic", logutil.Stack(3))
+			result = httpp.ServerError(err, httpp.DefaultMessage)
 		}
 	}()
-
-	h.next.ServeHTTP(w, r)
+	return h.next.ServeErrHTTP(w, r)
 }

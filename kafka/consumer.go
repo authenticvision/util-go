@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/IBM/sarama"
 	"github.com/authenticvision/util-go/logutil"
+	"log/slog"
 )
 
 type ConsumerConfig struct {
@@ -71,13 +72,14 @@ func (c *Consumer) Consume(ctx context.Context, consumerFn func(context.Context,
 						log.Debug("message channel was closed")
 						return nil
 					}
-					log := log.With("kafka_key", string(message.Key))
-					ctx = logutil.WithLogContext(ctx, log)
+					group := logutil.Grouped("kafka")
+					scope := logutil.NewScope(group, slog.String("key", string(message.Key)))
+					log := scope.Log(log)
 					log.Debug("received message")
 
-					err := consumerFn(ctx, message)
+					err := consumerFn(logutil.WithLogContext(ctx, log), message)
 					if err != nil {
-						cancel(fmt.Errorf("process message (key %q): %w", string(message.Key), err))
+						cancel(scope.Err(err, "process message"))
 						return nil
 					}
 					log.Debug("processed message")
