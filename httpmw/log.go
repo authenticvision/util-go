@@ -11,10 +11,24 @@ import (
 	"time"
 )
 
+type accessLogTag struct{}
+
+type accessLog struct {
+	SuppressInfoLog bool
+}
+
 // NewLogMiddleware creates a middleware for recording each request as log line.
 // Errors are processed via logutil.Destructure and won't be forwarded.
 func NewLogMiddleware(log *slog.Logger) Middleware {
 	return &logMiddleware{log: log}
+}
+
+// DisableAccessLog suppresses informational access log lines for the request.
+// This only affects the application's internal access log.
+func DisableAccessLog(r *http.Request) {
+	if p, ok := r.Context().Value(accessLogTag{}).(*accessLog); ok {
+		p.SuppressInfoLog = true
+	}
 }
 
 type logMiddleware struct {
@@ -31,9 +45,11 @@ type logHandler struct {
 }
 
 func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error {
+	var opts accessLog
 	hookedW := &httpStatusRecorder{ResponseWriter: w}
 	log := h.log.With(slog.String("request_id", uuid.NewString()))
 	ctx := logutil.WithLogContext(r.Context(), log)
+	ctx = context.WithValue(ctx, accessLogTag{}, &opts)
 	r = r.WithContext(ctx)
 
 	start := time.Now()
@@ -67,7 +83,9 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 		log = logutil.Destructure(err, log)
 	}
 
-	log.Log(ctx, level, "HTTP request")
+	if !opts.SuppressInfoLog || level != slog.LevelInfo {
+		log.Log(ctx, level, "HTTP request")
+	}
 
 	return nil
 }
