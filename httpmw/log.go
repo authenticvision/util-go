@@ -12,10 +12,25 @@ import (
 	"time"
 )
 
+type User = ddlog.User
+
 type accessLogTag struct{}
 
 type accessLog struct {
 	SuppressInfoLog bool
+	User            *User
+}
+
+// WithRequestUser attaches the given user identity to the request's log, and
+// additionally adds it to the request's top-level log scope for access logs.
+func WithRequestUser(r *http.Request, user User) *http.Request {
+	ctx := r.Context()
+	if p, ok := ctx.Value(accessLogTag{}).(*accessLog); ok {
+		p.User = &user
+	}
+	log := logutil.FromContext(ctx)
+	log = log.With(slog.Any(ddlog.UserKey, user))
+	return r.WithContext(logutil.WithLogContext(ctx, log))
 }
 
 // NewLogMiddleware creates a middleware for recording each request as log line.
@@ -69,6 +84,9 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	// attach request+response telemetry
 	log := h.log.With(slog.Duration("duration", duration))
 	log = ddlog.WithResponse(log, r, id, hookedW)
+	if user := opts.User; user != nil {
+		log = log.With(slog.Any(ddlog.UserKey, *user))
+	}
 
 	// attach request error, if any
 	level := slog.LevelInfo
