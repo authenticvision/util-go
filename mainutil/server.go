@@ -52,6 +52,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 	server := &http.Server{
 		Addr: addr,
 		Handler: httpp.NeverErrors(httpmw.Chain(handler,
+			httpmw.NewCompressionMiddleware(),
 			httpmw.NewPanicMiddleware(),
 			httpmw.NewLogMiddleware(log),
 		)),

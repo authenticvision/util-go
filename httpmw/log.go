@@ -1,14 +1,12 @@
 package httpmw
 
 import (
-	"bufio"
 	"context"
 	"errors"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/google/uuid"
 	"log/slog"
-	"net"
 	"net/http"
 	"time"
 )
@@ -33,7 +31,7 @@ type logHandler struct {
 }
 
 func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error {
-	hookedW := interceptStatusCode(w)
+	hookedW := &httpStatusRecorder{ResponseWriter: w}
 	log := h.log.With(slog.String("request_id", uuid.NewString()))
 	ctx := logutil.WithLogContext(r.Context(), log)
 	r = r.WithContext(ctx)
@@ -48,7 +46,7 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 
 	log = log.With(
 		slog.Duration("duration", duration),
-		slog.Any("http", makeDatadogHttpValue(r, hookedW.StatusCode())),
+		slog.Any("http", makeDatadogHttpValue(r, hookedW.statusCode)),
 		slog.Any("network", makeDatadogNetworkValue(r)))
 
 	level := slog.LevelInfo
@@ -74,28 +72,22 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	return nil
 }
 
-type httpStatusRecorder interface {
+var _ interface {
 	http.ResponseWriter
-	StatusCode() int
-}
+	httpp.ResponseWriterUnwrapper
+} = &httpStatusRecorder{}
 
-func interceptStatusCode(w http.ResponseWriter) httpStatusRecorder {
-	hook := &httpStatusHook{ResponseWriter: w}
-	if _, ok := w.(http.Hijacker); ok {
-		// for WebSocket support
-		return &httpStatusHookHijackable{httpStatusHook: hook}
-	} else {
-		return hook
-	}
-}
-
-type httpStatusHook struct {
+type httpStatusRecorder struct {
 	http.ResponseWriter
 	wroteHeader bool
 	statusCode  int
 }
 
-func (hook *httpStatusHook) WriteHeader(statusCode int) {
+func (hook *httpStatusRecorder) Unwrap() http.ResponseWriter {
+	return hook.ResponseWriter
+}
+
+func (hook *httpStatusRecorder) WriteHeader(statusCode int) {
 	if !hook.wroteHeader {
 		hook.wroteHeader = true
 		hook.statusCode = statusCode
@@ -103,19 +95,9 @@ func (hook *httpStatusHook) WriteHeader(statusCode int) {
 	hook.ResponseWriter.WriteHeader(statusCode)
 }
 
-func (hook *httpStatusHook) StatusCode() int {
-	if hook.statusCode != 0 {
-		return hook.statusCode
-	} else {
-		// implicit behavior of Go's ResponseWriter
-		return http.StatusOK
+func (hook *httpStatusRecorder) Write(b []byte) (int, error) {
+	if !hook.wroteHeader {
+		hook.WriteHeader(http.StatusOK)
 	}
-}
-
-type httpStatusHookHijackable struct {
-	*httpStatusHook
-}
-
-func (hook *httpStatusHookHijackable) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return hook.ResponseWriter.(http.Hijacker).Hijack()
+	return hook.ResponseWriter.Write(b)
 }

@@ -22,7 +22,9 @@ func JSON(w http.ResponseWriter, resp any) error {
 
 	hdr := w.Header()
 	hdr.Set("Content-Type", "application/json")
-	hdr.Set("Content-Length", strconv.Itoa(len(buf)))
+	if !PrefersVariableContentLength(w) {
+		hdr.Set("Content-Length", strconv.Itoa(len(buf)))
+	}
 
 	_, err = w.Write(buf)
 	if err != nil {
