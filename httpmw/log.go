@@ -46,7 +46,9 @@ type logHandler struct {
 }
 
 func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error {
+	// public random ID for all log lines of this request, e.g. for use on error screens
 	id := uuid.New()
+	w.Header().Set("X-Request-Id", id.String())
 
 	// attach logger and extendable scope to context
 	var opts accessLog
