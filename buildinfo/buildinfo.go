@@ -1,6 +1,7 @@
 package buildinfo
 
 import (
+	"github.com/authenticvision/util-go/httpmw"
 	"github.com/authenticvision/util-go/httpp"
 	"net/http"
 	"runtime/debug"
@@ -53,6 +54,10 @@ func init() {
 }
 
 var Handler = httpp.EmitErrorsFunc(func(w http.ResponseWriter, r *http.Request) error {
+	// This handler is often used as startup/liveness probe, for monitoring checks, and possibly
+	// for collecting build information regularly. Disable logging to reduce noise.
+	httpmw.DisableAccessLog(r)
+
 	type response struct {
 		GitCommit     string    `json:"git_commit"`
 		GitCommitDate time.Time `json:"git_commit_date"`

@@ -46,7 +46,14 @@ func (s *Scope) Log(log *slog.Logger, attrs ...slog.Attr) *slog.Logger {
 	}
 }
 
-// Err returns an error that propagates the scope's current attributes, plus additional attributes.
+// New creates a new error with the given message and attributes.
+// The error inherits the scope's current attributes.
+func (s *Scope) New(msg string, attrs ...slog.Attr) error {
+	return &scopedError{err: errors.New(msg), group: s.group, attrs: s.concat(attrs)}
+}
+
+// Err wraps an error to propagate the scope's current attributes, plus additional attributes.
+// The inner error should not be nil.
 func (s *Scope) Err(err error, msg string, attrs ...slog.Attr) error {
 	return &scopedError{err: err, msg: msg, group: s.group, attrs: s.concat(attrs)}
 }
@@ -62,9 +69,20 @@ type scopedError struct {
 	attrs []slog.Attr
 }
 
+// Error returns one of three formats, depending on whether msg and err are set:
+//
+//   - <msg> [with <attrib1=value> [<attrib2=value> ...]][: <err>]
+//   - <err> [with <attrib1=value> [<attrib2=value> ...]]
+//   - scoped error [with <attrib1=value> [<attrib2=value> ...]]
 func (e scopedError) Error() string {
 	var sb strings.Builder
-	sb.WriteString(e.msg)
+	if e.msg != "" {
+		sb.WriteString(e.msg)
+	} else if e.err != nil {
+		sb.WriteString(e.err.Error())
+	} else {
+		sb.WriteString("scoped error")
+	}
 	if len(e.attrs) > 0 {
 		sb.WriteString(" with ")
 		for i, attr := range e.attrs {
@@ -76,8 +94,10 @@ func (e scopedError) Error() string {
 			sb.WriteString(strconv.Quote(attr.Value.String()))
 		}
 	}
-	sb.WriteString(": ")
-	sb.WriteString(e.err.Error())
+	if e.msg != "" && e.err != nil {
+		sb.WriteString(": ")
+		sb.WriteString(e.err.Error())
+	}
 	return sb.String()
 }
 
