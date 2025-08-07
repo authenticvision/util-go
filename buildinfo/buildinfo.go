@@ -37,9 +37,10 @@ func init() {
 	if GitCommit == "" || GitCommitDate.IsZero() {
 		if info, ok := debug.ReadBuildInfo(); ok {
 			for _, setting := range info.Settings {
-				if setting.Key == "vcs.revision" {
+				switch setting.Key {
+				case "vcs.revision":
 					GitCommit = setting.Value
-				} else if setting.Key == "vcs.time" {
+				case "vcs.time":
 					var err error
 					GitCommitDate, err = time.Parse(time.RFC3339, setting.Value)
 					if err != nil {

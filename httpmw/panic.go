@@ -28,9 +28,7 @@ func NewPanicMiddleware() Middleware {
 	return &panicMiddleware{}
 }
 
-type panicMiddleware struct {
-	next httpp.Handler
-}
+type panicMiddleware struct{}
 
 func (m *panicMiddleware) Middleware(next httpp.Handler) httpp.Handler {
 	return &panicHandler{next: next}

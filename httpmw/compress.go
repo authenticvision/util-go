@@ -99,7 +99,6 @@ type compressWriter struct {
 	encoder     resettableWriter
 	optOut      bool
 	wroteHeader bool
-	hijacked    bool
 }
 
 func (w *compressWriter) Unwrap() http.ResponseWriter {

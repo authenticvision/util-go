@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"context"
 	logpkg "log"
 	"log/slog"
 	"strings"
@@ -21,7 +22,7 @@ func (l *LogWriterShim) Write(p []byte) (n int, err error) {
 		// See also: https://github.com/golang/go/issues/26918
 		level = LevelTrace
 	}
-	l.l.Log(nil, level, s)
+	l.l.Log(context.Background(), level, s)
 	return len(p), nil
 }
 
