@@ -8,6 +8,8 @@ import (
 	"log/slog"
 )
 
+var kafkaScope = logutil.NewScope("kafka")
+
 type ConsumerConfig struct {
 	Brokers       []string `required:"1"`
 	ConsumerGroup string
@@ -72,8 +74,7 @@ func (c *Consumer) Consume(ctx context.Context, consumerFn func(context.Context,
 						log.Debug("message channel was closed")
 						return nil
 					}
-					group := logutil.Grouped("kafka")
-					scope := logutil.NewScope(group, slog.String("key", string(message.Key)))
+					scope := kafkaScope.Sub(slog.String("key", string(message.Key)))
 					log := scope.Log(log)
 					log.Debug("received message")
 
