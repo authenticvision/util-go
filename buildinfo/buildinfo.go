@@ -53,7 +53,7 @@ func init() {
 	}
 }
 
-var Handler = httpp.EmitErrorsFunc(func(w http.ResponseWriter, r *http.Request) error {
+var Handler = func(w http.ResponseWriter, r *http.Request) error {
 	// This handler is often used as startup/liveness probe, for monitoring checks, and possibly
 	// for collecting build information regularly. Disable logging to reduce noise.
 	httpmw.DisableAccessLog(r)
@@ -68,4 +68,4 @@ var Handler = httpp.EmitErrorsFunc(func(w http.ResponseWriter, r *http.Request) 
 		GitCommitDate: GitCommitDate,
 		Version:       Version,
 	})
-})
+}

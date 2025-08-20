@@ -17,11 +17,7 @@ type ServeMux struct {
 }
 
 func (mux *ServeMux) Handle(pattern string, handler Handler) {
-	if h, ok := handler.(http.Handler); ok {
-		mux.next.Handle(pattern, h)
-	} else {
-		mux.next.Handle(pattern, EmitErrors(handler))
-	}
+	mux.next.Handle(pattern, CollectErrors(handler))
 }
 
 func (mux *ServeMux) HandleFunc(pattern string, handlerFunc HandlerFunc) {
@@ -41,14 +37,9 @@ func (mux *ServeMux) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 		w.WriteHeader(http.StatusBadRequest)
 		return nil
 	}
-	handlerStd, _ := mux.next.Handler(r)
-	handler, ok := handlerStd.(Handler)
-	if !ok {
-		// for HandleStd handlers or generic handlers of http.ServeMux, e.g. NotFoundHandler
-		handlerStd.ServeHTTP(w, r)
-		return nil
-	}
-	return handler.ServeErrHTTP(w, r)
+	r, errPtr := WithErrorCollector(r)
+	mux.next.ServeHTTP(w, r)
+	return *errPtr
 }
 
 // StripPrefix is copied from Go 1.24.5's http.StripPrefix, with error forwarding added.
