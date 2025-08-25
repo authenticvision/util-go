@@ -2,9 +2,10 @@ package httpmw
 
 import (
 	"fmt"
+	"net/http"
+
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
-	"net/http"
 )
 
 // PanicError wraps a panic value and is returned when a handler panics.

@@ -3,14 +3,15 @@ package mainutil
 import (
 	"context"
 	"errors"
-	"github.com/authenticvision/util-go/buildinfo"
-	"github.com/authenticvision/util-go/logutil"
-	"github.com/mologie/nicecmd"
-	"github.com/spf13/cobra"
 	"log/slog"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/authenticvision/util-go/buildinfo"
+	"github.com/authenticvision/util-go/logutil"
+	"github.com/mologie/nicecmd"
+	"github.com/spf13/cobra"
 )
 
 var InKubernetes = func() bool {

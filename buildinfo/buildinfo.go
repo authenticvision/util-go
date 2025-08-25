@@ -1,12 +1,13 @@
 package buildinfo
 
 import (
-	"github.com/authenticvision/util-go/httpmw"
-	"github.com/authenticvision/util-go/httpp"
 	"net/http"
 	"runtime/debug"
 	"strconv"
 	"time"
+
+	"github.com/authenticvision/util-go/httpmw"
+	"github.com/authenticvision/util-go/httpp"
 )
 
 var (

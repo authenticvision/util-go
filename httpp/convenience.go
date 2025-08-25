@@ -2,10 +2,11 @@ package httpp
 
 import (
 	"encoding/json"
-	"github.com/authenticvision/util-go/logutil"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"github.com/authenticvision/util-go/logutil"
 )
 
 func NoContent(w http.ResponseWriter) error {

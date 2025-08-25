@@ -4,11 +4,12 @@ package ddlog
 
 import (
 	"fmt"
-	"github.com/google/uuid"
 	"log/slog"
 	"net"
 	"net/http"
 	"strconv"
+
+	"github.com/google/uuid"
 )
 
 type HttpStatusRecorder interface {

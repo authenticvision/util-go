@@ -3,13 +3,14 @@ package httpmw
 import (
 	"errors"
 	"fmt"
-	"github.com/authenticvision/util-go/httpp"
-	"github.com/klauspost/compress/gzip"
-	"github.com/klauspost/compress/zstd"
 	"io"
 	"net/http"
 	"strings"
 	"sync"
+
+	"github.com/authenticvision/util-go/httpp"
+	"github.com/klauspost/compress/gzip"
+	"github.com/klauspost/compress/zstd"
 )
 
 // NewCompressionMiddleware opportunistically compresses the response with zstd or gzip.

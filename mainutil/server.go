@@ -4,15 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
+	"net"
+	"net/http"
+	"time"
+
 	"github.com/authenticvision/util-go/httpmw"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/mologie/nicecmd"
 	"github.com/spf13/cobra"
-	"log/slog"
-	"net"
-	"net/http"
-	"time"
 )
 
 // ShutdownTimeout is the grace period that requests have to finish after shutdown is requested.

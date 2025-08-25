@@ -3,9 +3,10 @@ package kafka
 import (
 	"context"
 	"fmt"
+	"log/slog"
+
 	"github.com/IBM/sarama"
 	"github.com/authenticvision/util-go/logutil"
-	"log/slog"
 )
 
 var kafkaScope = logutil.NewScope("kafka")

@@ -2,10 +2,11 @@ package logutil
 
 import (
 	"errors"
-	"github.com/authenticvision/util-go/generic"
 	"log/slog"
 	"strconv"
 	"strings"
+
+	"github.com/authenticvision/util-go/generic"
 )
 
 // RootScope attributes are created as top-level fields in log messages.

@@ -2,9 +2,10 @@ package logutil
 
 import (
 	"fmt"
+	"strings"
+
 	"github.com/BooleanCat/go-functional/v2/it/op"
 	"github.com/spf13/pflag"
-	"strings"
 )
 
 var _ pflag.Value = op.Ref(FormatText)

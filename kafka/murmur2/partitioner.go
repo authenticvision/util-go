@@ -1,8 +1,9 @@
 package murmur2
 
 import (
-	"github.com/IBM/sarama"
 	"hash"
+
+	"github.com/IBM/sarama"
 )
 
 var Partitioner = sarama.NewCustomPartitioner(

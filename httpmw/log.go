@@ -3,13 +3,14 @@ package httpmw
 import (
 	"context"
 	"errors"
+	"log/slog"
+	"net/http"
+	"time"
+
 	"github.com/authenticvision/util-go/httpmw/internal/ddlog"
 	"github.com/authenticvision/util-go/httpp"
 	"github.com/authenticvision/util-go/logutil"
 	"github.com/google/uuid"
-	"log/slog"
-	"net/http"
-	"time"
 )
 
 type User = ddlog.User

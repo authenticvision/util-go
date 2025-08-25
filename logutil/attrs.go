@@ -3,12 +3,13 @@ package logutil
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lmittmann/tint"
 	"io"
 	"log/slog"
 	"math"
 	"runtime"
 	"strings"
+
+	"github.com/lmittmann/tint"
 )
 
 const (

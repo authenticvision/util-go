@@ -1,10 +1,11 @@
 package logutil
 
 import (
-	"github.com/BooleanCat/go-functional/v2/it/op"
-	"github.com/spf13/pflag"
 	"log/slog"
 	"strings"
+
+	"github.com/BooleanCat/go-functional/v2/it/op"
+	"github.com/spf13/pflag"
 )
 
 var _ pflag.Value = op.Ref(Level(0))

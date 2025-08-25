@@ -2,11 +2,12 @@ package logutil
 
 import (
 	"fmt"
-	"github.com/lmittmann/tint"
-	"github.com/mattn/go-isatty"
 	"io"
 	"log/slog"
 	"os"
+
+	"github.com/lmittmann/tint"
+	"github.com/mattn/go-isatty"
 )
 
 func NewHandler(format Format, level slog.Level) (slog.Handler, error) {
