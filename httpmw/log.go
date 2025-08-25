@@ -13,7 +13,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type User = ddlog.User
+type User = logutil.UserValue
 
 type accessLogTag struct{}
 
@@ -30,7 +30,7 @@ func WithRequestUser(r *http.Request, user User) *http.Request {
 		p.User = &user
 	}
 	log := logutil.FromContext(ctx)
-	log = log.With(slog.Any(ddlog.UserKey, user))
+	log = log.With(slog.Any(logutil.UserKey, user))
 	return r.WithContext(logutil.WithLogContext(ctx, log))
 }
 
@@ -86,7 +86,7 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	log := h.log.With(slog.Duration("duration", duration))
 	log = ddlog.WithResponse(log, r, id, hookedW)
 	if user := opts.User; user != nil {
-		log = log.With(slog.Any(ddlog.UserKey, *user))
+		log = log.With(slog.Any(logutil.UserKey, *user))
 	}
 
 	// attach request error, if any
