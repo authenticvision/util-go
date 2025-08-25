@@ -10,7 +10,23 @@ import (
 	"strings"
 )
 
-const KeyStack = "stack"
+const StackKey = "stack"
+
+func Stack(skip int) slog.Attr {
+	return slog.Any(StackKey, stackValue{pcs: fullStack(skip + 1)})
+}
+
+func fullStack(skip int) []uintptr {
+	depth := 32
+	for {
+		pc := make([]uintptr, depth)
+		n := runtime.Callers(skip+1, pc)
+		if n < len(pc) {
+			return pc[:n-1] // skips return to goexit
+		}
+		depth *= 2
+	}
+}
 
 type stackValue struct {
 	pcs []uintptr
@@ -77,22 +93,6 @@ func (s stackValue) MarshalJSON() ([]byte, error) {
 		return nil, fmt.Errorf("marshal stack trace: %w", err)
 	} else {
 		return buf, nil
-	}
-}
-
-func Stack(skip int) slog.Attr {
-	return slog.Any(KeyStack, stackValue{pcs: fullStack(skip)})
-}
-
-func fullStack(skip int) []uintptr {
-	depth := 32
-	for {
-		pc := make([]uintptr, depth)
-		n := runtime.Callers(skip+2, pc)
-		if n < len(pc) {
-			return pc[:n-1] // skips return to goexit
-		}
-		depth *= 2
 	}
 }
 

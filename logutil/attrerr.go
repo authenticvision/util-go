@@ -6,7 +6,7 @@ import (
 	"github.com/lmittmann/tint"
 )
 
-const KeyErr = "error"
+const ErrKey = "error"
 
 func ErrColor(value slog.Attr) slog.Attr {
 	const ansiRed = 9
@@ -14,5 +14,5 @@ func ErrColor(value slog.Attr) slog.Attr {
 }
 
 func Err(err error) slog.Attr {
-	return ErrColor(slog.Any(KeyErr, err))
+	return ErrColor(slog.Any(ErrKey, err))
 }

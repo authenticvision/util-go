@@ -80,7 +80,7 @@ func (w *termOutputWrapper) attrReplacer(groups []string, a slog.Attr) slog.Attr
 				a = tint.Attr(term.ansiColor, a)
 			}
 		}
-	case KeyStack:
+	case StackKey:
 		if stack, ok := a.Value.Any().(stackValue); ok {
 			w.stack = &stack
 			return slog.Attr{} // drop from message
