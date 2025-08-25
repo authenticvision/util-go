@@ -95,14 +95,14 @@ func (s stackValue) MarshalJSON() ([]byte, error) {
 }
 
 func Stack(skip int) slog.Attr {
-	return slog.Any(KeyStack, stackValue{pcs: fullStack(skip)})
+	return slog.Any(KeyStack, stackValue{pcs: fullStack(skip + 1)})
 }
 
 func fullStack(skip int) []uintptr {
 	depth := 32
 	for {
 		pc := make([]uintptr, depth)
-		n := runtime.Callers(skip+2, pc)
+		n := runtime.Callers(skip+1, pc)
 		if n < len(pc) {
 			return pc[:n-1] // skips return to goexit
 		}
