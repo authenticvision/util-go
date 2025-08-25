@@ -8,23 +8,9 @@ import (
 	"math"
 	"runtime"
 	"strings"
-
-	"github.com/lmittmann/tint"
 )
 
-const (
-	KeyErr   = "error"
-	KeyStack = "stack"
-)
-
-func ErrColor(value slog.Attr) slog.Attr {
-	const ansiRed = 9
-	return tint.Attr(ansiRed, value)
-}
-
-func Err(err error) slog.Attr {
-	return ErrColor(slog.Any(KeyErr, err))
-}
+const KeyStack = "stack"
 
 type stackValue struct {
 	pcs []uintptr
