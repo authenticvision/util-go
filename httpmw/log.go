@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"time"
 
@@ -93,12 +94,14 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	level := slog.LevelInfo
 	if err != nil {
 		var errLeveler slog.Leveler
-		if errors.Is(err, context.Canceled) {
+		if errors.Is(err, context.Canceled) || clientConnDied(r, err) {
 			log = log.With(slog.Bool("canceled", true))
 			// Context cancellation happens when the browser closes/aborts a connection, which then
 			// cascades to any running sub-requests on the server. This includes some error
-			// scenarios, like a network-level timeout or I/O error. Regardless, log this cascade
-			// of errors is intentional, hence always log it with info level.
+			// scenarios, like a network-level timeout or I/O error. When such an event
+			// occurs during a read or write, said operation may also directly return an error.
+			// Regardless, this cascade of errors is intentional, or at least not
+			// under our influence, hence always log it with info level.
 		} else if errors.As(err, &errLeveler) {
 			level = errLeveler.Level()
 		} else {
@@ -113,6 +116,24 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	}
 
 	return nil
+}
+
+// clientConnDied returns true if err originates from a read/write to the HTTP client.
+// The check against prevents accidentally hiding network errors to a backend/database/etc.
+// Most commonly this means ECONNRESET ("connection reset by peer") and EPIPE ("broken pipe")
+func clientConnDied(r *http.Request, err error) bool {
+	var netErr *net.OpError
+	if !errors.As(err, &netErr) {
+		return false
+	}
+	if !(netErr.Op == "read" || netErr.Op == "write") {
+		return false
+	}
+	localAddr, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
+	if !ok || netErr.Source == nil {
+		return false
+	}
+	return netErr.Source.String() == localAddr.String()
 }
 
 var _ interface {
