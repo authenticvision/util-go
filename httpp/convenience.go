@@ -14,7 +14,7 @@ func NoContent(w http.ResponseWriter) error {
 	return nil
 }
 
-func JSON(w http.ResponseWriter, resp any) error {
+func JSONStatus(w http.ResponseWriter, resp any, statusCode int) error {
 	buf, err := json.Marshal(resp)
 	if err != nil {
 		// A custom serializer likely returned an error.
@@ -27,6 +27,8 @@ func JSON(w http.ResponseWriter, resp any) error {
 		hdr.Set("Content-Length", strconv.Itoa(len(buf)))
 	}
 
+	w.WriteHeader(statusCode)
+
 	_, err = w.Write(buf)
 	if err != nil {
 		// This usually fails with an I/O error when the client disconnects unexpectedly.
@@ -34,6 +36,10 @@ func JSON(w http.ResponseWriter, resp any) error {
 	}
 
 	return nil
+}
+
+func JSON(w http.ResponseWriter, resp any) error {
+	return JSONStatus(w, resp, http.StatusOK)
 }
 
 func BadRequest(err error, public ClientMessage) error {
