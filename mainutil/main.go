@@ -65,8 +65,10 @@ func RootCommand[T LogConfigEmbedder](
 	}
 
 	cmd := nicecmd.RootCommand(nicecmd.SetupAndRun(setup, run), cmdTmpl, cfg, opts...)
-	cmd.SilenceErrors = true        // for logging them ourselves via slog
-	cmd.SilenceUsage = InKubernetes // to avoid noise, though locally this is quite helpful
+	cmd.SilenceErrors = true // for logging them ourselves via slog
+	if !cmd.SilenceUsage {
+		cmd.SilenceUsage = InKubernetes // to avoid noise, though locally this is quite helpful
+	}
 
 	if cmd.Version == "" {
 		if buildinfo.Version != "" {
