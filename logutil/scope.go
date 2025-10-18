@@ -92,7 +92,11 @@ func (e scopedError) Error() string {
 			}
 			sb.WriteString(attr.Key)
 			sb.WriteRune('=')
-			sb.WriteString(strconv.Quote(attr.Value.String()))
+			if j, ok := attr.Value.Any().(jsonAttr); ok {
+				sb.Write(j)
+			} else {
+				sb.WriteString(strconv.Quote(attr.Value.String()))
+			}
 		}
 	}
 	if e.msg != "" && e.err != nil {
