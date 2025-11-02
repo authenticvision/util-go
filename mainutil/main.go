@@ -98,12 +98,6 @@ func setupContext[T LogConfigEmbedder](cfg *T, cmd *cobra.Command, args []string
 		// func Run will now log command failure in the requested format
 	}
 
-	// cgroup2 compatibility, native to Go 1.25, needed for everything before that
-	if err := autoMaxProcs(); err != nil {
-		log.ErrorContext(ctx, "failed to update GOMAXPROCS", logutil.Err(err))
-		// continue regardless
-	}
-
 	return nil
 }
 
