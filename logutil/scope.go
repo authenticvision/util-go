@@ -110,20 +110,18 @@ func (e scopedError) Unwrap() error {
 	return e.err
 }
 
-// Destructure recursively moves all attributes from err to log, and returns the new logger.
+// Destructure recursively extracts attributes from an error chain with scopedError entries.
 // The error chain is modified!
-// Errors that unwrap to more than one structure error are unsupported/skipped.
-func Destructure(err error, log *slog.Logger) *slog.Logger {
-	var attrs []any
+// Only the first chain with a scopedError is processed for error trees created via errors.Join.
+func Destructure(err error) (attrs []slog.Attr) {
 	curr := err
 	for {
 		var sErr *scopedError
 		if errors.As(curr, &sErr) {
-			sAttrs := generic.AnySlice(sErr.attrs)
 			if sErr.group != "" {
-				attrs = append(attrs, slog.Group(sErr.group, sAttrs...))
+				attrs = append(attrs, slog.Group(sErr.group, generic.AnySlice(sErr.attrs)...))
 			} else {
-				attrs = append(attrs, sAttrs...)
+				attrs = append(attrs, sErr.attrs...)
 			}
 			sErr.attrs = nil
 			curr = sErr.Unwrap()
@@ -131,6 +129,5 @@ func Destructure(err error, log *slog.Logger) *slog.Logger {
 			break
 		}
 	}
-	attrs = append(attrs, Err(err))
-	return log.With(attrs...)
+	return
 }
