@@ -6,6 +6,7 @@ type Middleware interface {
 	Middleware(handler httpp.Handler) httpp.Handler
 }
 
+// Chain adds each Middleware to handler. The last middleware is the first to be called.
 func Chain(handler httpp.Handler, middlewares ...Middleware) httpp.Handler {
 	for _, middleware := range middlewares {
 		handler = middleware.Middleware(handler)
