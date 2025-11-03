@@ -38,9 +38,9 @@ func (l *Level) Type() string {
 	return "level"
 }
 
-var (
-	LevelTrace = slog.Level(-8)
-	LevelFatal = slog.Level(12)
+const (
+	LevelTrace slog.Level = -8
+	LevelFatal slog.Level = 12
 )
 
 var LevelNames = map[slog.Level]string{
