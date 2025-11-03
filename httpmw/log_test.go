@@ -2,11 +2,12 @@ package httpmw
 
 import (
 	"context"
-	"github.com/stretchr/testify/require"
 	"net"
 	"net/http"
 	"syscall"
 	"testing"
+
+	"github.com/stretchr/testify/require"
 )
 
 func Test_clientConnDied_EPIPE(t *testing.T) {

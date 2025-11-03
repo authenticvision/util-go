@@ -108,7 +108,7 @@ func (h *logHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 			level = slog.LevelError
 		}
 
-		log = logutil.Destructure(err, log)
+		log = log.With(logutil.Err(err))
 	}
 
 	if !opts.SuppressInfoLog || level != slog.LevelInfo {

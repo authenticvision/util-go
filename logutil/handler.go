@@ -1,6 +1,7 @@
 package logutil
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"log/slog"
@@ -11,23 +12,32 @@ import (
 )
 
 func NewHandler(format Format, level slog.Level) (slog.Handler, error) {
-	f := os.Stderr
+	return NewHandlerTo(os.Stderr, format, level)
+}
+
+func NewHandlerTo(w io.Writer, format Format, level slog.Level) (slog.Handler, error) {
+	var handler slog.Handler
 	switch format {
 	case FormatText:
-		color := isatty.IsTerminal(f.Fd())
-		w := &termOutputWrapper{next: f}
-		return tint.NewHandler(w, &tint.Options{
+		color := false
+		if f, ok := w.(*os.File); ok {
+			color = isatty.IsTerminal(f.Fd())
+		}
+		wrapper := &termOutputWrapper{next: w}
+		handler = tint.NewHandler(wrapper, &tint.Options{
 			Level:       level,
-			ReplaceAttr: w.attrReplacer,
+			ReplaceAttr: wrapper.attrReplacer,
 			NoColor:     !color,
-		}), nil
+		})
 	case FormatJSON:
-		return slog.NewJSONHandler(f, &slog.HandlerOptions{
+		handler = slog.NewJSONHandler(w, &slog.HandlerOptions{
 			Level:       level,
 			ReplaceAttr: LevelAttrReplacer,
-		}), nil
+		})
+	default:
+		return nil, fmt.Errorf("unsupported log format: %s", format)
 	}
-	return nil, fmt.Errorf("unsupported log format: %s", format)
+	return &scopedErrorHandler{next: handler}, nil
 }
 
 // MustNewHandler forwards to NewHandler and panics when it fails.
@@ -87,4 +97,42 @@ func (w *termOutputWrapper) attrReplacer(groups []string, a slog.Attr) slog.Attr
 		}
 	}
 	return a
+}
+
+// scopedErrorHandler extends log messages by scopedError attributes of an error under ErrKey.
+type scopedErrorHandler struct {
+	next slog.Handler
+}
+
+func (d *scopedErrorHandler) Enabled(ctx context.Context, level slog.Level) bool {
+	return d.next.Enabled(ctx, level)
+}
+
+func (d *scopedErrorHandler) Handle(ctx context.Context, record slog.Record) error {
+	record.Attrs(func(attr slog.Attr) bool {
+		if attr.Key == ErrKey {
+			value := attr.Value
+			if value.Kind() == slog.KindLogValuer {
+				value = value.LogValuer().LogValue()
+			}
+			if err, ok := value.Any().(error); ok {
+				attrs := Destructure(err)
+				if len(attrs) > 0 {
+					record = record.Clone()
+					record.AddAttrs(attrs...)
+				}
+				return false // stop
+			}
+		}
+		return true // next key
+	})
+	return d.next.Handle(ctx, record)
+}
+
+func (d *scopedErrorHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
+	return &scopedErrorHandler{next: d.next.WithAttrs(attrs)}
+}
+
+func (d *scopedErrorHandler) WithGroup(name string) slog.Handler {
+	return &scopedErrorHandler{next: d.next.WithGroup(name)}
 }
