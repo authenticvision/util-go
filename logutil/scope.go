@@ -63,6 +63,19 @@ func (s *Scope) concat(attrs []slog.Attr) []slog.Attr {
 	return append(append([]slog.Attr{}, s.attrs...), attrs...)
 }
 
+// NewError attaches additional attributes to an error.
+// It is allowed to pass a nil err to create a new leaf error.
+// Use it in place of fmt.Errorf("message %q: %w", "detail", err) for nicer formatting in logs.
+// Use Scope for grouping error attributes.
+func NewError(msg string, err error, attrs ...slog.Attr) error {
+	if msg == "" {
+		// Allowing this might encourage the user to create error chains that obfuscate where the
+		// error was wrapped. A mostly unique message should identify the current operation.
+		panic("NewError: msg must not be empty, please describe what caused the error")
+	}
+	return &scopedError{err: err, msg: msg, attrs: attrs}
+}
+
 type scopedError struct {
 	err   error
 	msg   string

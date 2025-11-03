@@ -14,7 +14,7 @@ func TestNewHandler_ScopedError(t *testing.T) {
 	r := require.New(t)
 	a := assert.New(t)
 
-	testErr := RootScope.New("test error", slog.String("foo", "bar"))
+	testErr := NewError("test error", nil, slog.String("foo", "bar"))
 	a.EqualValues(`test error with foo="bar"`, testErr.Error())
 
 	buf := bytes.NewBuffer(nil)
