@@ -36,7 +36,29 @@ func Server[T ServerConfigEmbedder](serverMain ServerMain[T]) nicecmd.Hook[T] {
 	}
 }
 
-func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) error {
+type ServerOption func(*http.Server)
+
+// WithPlainHTTP2 enables plain-text HTTP 2 in addition to HTTP 1, e.g. for a gRPC server.
+func WithPlainHTTP2() ServerOption {
+	return func(server *http.Server) {
+		if server.Protocols == nil {
+			// no need to also request encrypted HTTP2 here, ListenAndServe does not support HTTPS
+			server.Protocols = &http.Protocols{}
+			server.Protocols.SetHTTP1(true)
+		}
+		server.Protocols.SetUnencryptedHTTP2(true)
+	}
+}
+
+// WithOnShutdown launches f in a separate goroutine when the HTTP server is shut down.
+// Shutdown usually happens a few seconds after termination is signaled.
+func WithOnShutdown(f func()) ServerOption {
+	return func(server *http.Server) {
+		server.RegisterOnShutdown(f)
+	}
+}
+
+func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opts ...ServerOption) error {
 	log := logutil.FromContext(ctx)
 
 	l, err := net.Listen("tcp", addr)
@@ -64,6 +86,9 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 			return reqCtx
 		},
 	}
+	for _, opt := range opts {
+		opt(server)
+	}
 	serveErr := make(chan error)
 	go func() {
 		// This goroutine runs until server.Shutdown() is called.
@@ -90,13 +115,13 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 
 		// This is purely cosmetic to catch stray errors, I don't expect anything in practice.
 		if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("server serve: %w", err)
+			return fmt.Errorf("serve goroutine after shutdown: %w", err)
 		}
 
 		return nil
 
 	case <-serveErr:
-		return fmt.Errorf("server startup: %w", err)
+		return fmt.Errorf("serve goroutine: %w", err)
 	}
 }
 
