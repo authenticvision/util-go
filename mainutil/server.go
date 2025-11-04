@@ -36,7 +36,29 @@ func Server[T ServerConfigEmbedder](serverMain ServerMain[T]) nicecmd.Hook[T] {
 	}
 }
 
-func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) error {
+type ServerOption func(*http.Server)
+
+// WithPlainHTTP2 enables plain-text HTTP 2 in addition to HTTP 1, e.g. for a gRPC server.
+func WithPlainHTTP2() ServerOption {
+	return func(server *http.Server) {
+		if server.Protocols == nil {
+			// no need to also request encrypted HTTP2 here, ListenAndServe does not support HTTPS
+			server.Protocols = &http.Protocols{}
+			server.Protocols.SetHTTP1(true)
+		}
+		server.Protocols.SetUnencryptedHTTP2(true)
+	}
+}
+
+// WithOnShutdown launches f in a separate goroutine when the HTTP server is shut down.
+// Shutdown usually happens a few seconds after termination is signaled.
+func WithOnShutdown(f func()) ServerOption {
+	return func(server *http.Server) {
+		server.RegisterOnShutdown(f)
+	}
+}
+
+func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opts ...ServerOption) error {
 	log := logutil.FromContext(ctx)
 
 	l, err := net.Listen("tcp", addr)
@@ -48,7 +70,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 		slog.String("bind_addr", addr),
 		slog.String("link", fmt.Sprintf("http://%s", addr)))
 
-	reqCtx, reqCancel := context.WithCancel(context.Background())
+	reqCtx, reqCancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer reqCancel()
 	server := &http.Server{
 		Addr: addr,
@@ -58,11 +80,13 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 			httpmw.NewLogMiddleware(log),
 		)),
 		BaseContext: func(net.Listener) context.Context {
-			// Requests are not launched from cmd's context (which is canceled on SIGTERM), but
-			// instead from context.Background. They get a grace period of 20 seconds to complete
-			// after termination is requested.
+			// Requests are not launched with a separate cancellation scope, so that they get a
+			// grace period of 20 seconds to complete after termination is requested.
 			return reqCtx
 		},
+	}
+	for _, opt := range opts {
+		opt(server)
 	}
 	serveErr := make(chan error)
 	go func() {
@@ -82,7 +106,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 			time.Sleep(3 * time.Second)
 		}
 
-		// Shutdown makes ListenAndServer return immediately.
+		// Shutdown makes ListenAndServe return immediately.
 		// Shutdown returns when all handlers have completed, or after at most 20-ish seconds.
 		if err := server.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf("server shutdown: %w", err)
@@ -90,13 +114,13 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 
 		// This is purely cosmetic to catch stray errors, I don't expect anything in practice.
 		if err := <-serveErr; err != nil && !errors.Is(err, http.ErrServerClosed) {
-			return fmt.Errorf("server serve: %w", err)
+			return fmt.Errorf("serve goroutine after shutdown: %w", err)
 		}
 
-		return nil
+		return ctx.Err()
 
 	case <-serveErr:
-		return fmt.Errorf("server startup: %w", err)
+		return fmt.Errorf("serve goroutine: %w", err)
 	}
 }
 
