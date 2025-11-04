@@ -82,7 +82,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler) err
 			time.Sleep(3 * time.Second)
 		}
 
-		// Shutdown makes ListenAndServer return immediately.
+		// Shutdown makes ListenAndServe return immediately.
 		// Shutdown returns when all handlers have completed, or after at most 20-ish seconds.
 		if err := server.Shutdown(context.Background()); err != nil {
 			return fmt.Errorf("server shutdown: %w", err)
