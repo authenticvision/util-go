@@ -118,7 +118,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opt
 			return fmt.Errorf("serve goroutine after shutdown: %w", err)
 		}
 
-		return nil
+		return ctx.Err()
 
 	case <-serveErr:
 		return fmt.Errorf("serve goroutine: %w", err)
