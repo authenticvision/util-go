@@ -70,7 +70,7 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opt
 		slog.String("bind_addr", addr),
 		slog.String("link", fmt.Sprintf("http://%s", addr)))
 
-	reqCtx, reqCancel := context.WithCancel(context.Background())
+	reqCtx, reqCancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer reqCancel()
 	server := &http.Server{
 		Addr: addr,
@@ -80,9 +80,8 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opt
 			httpmw.NewLogMiddleware(log),
 		)),
 		BaseContext: func(net.Listener) context.Context {
-			// Requests are not launched from cmd's context (which is canceled on SIGTERM), but
-			// instead from context.Background. They get a grace period of 20 seconds to complete
-			// after termination is requested.
+			// Requests are not launched with a separate cancellation scope, so that they get a
+			// grace period of 20 seconds to complete after termination is requested.
 			return reqCtx
 		},
 	}
