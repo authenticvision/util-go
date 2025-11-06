@@ -9,9 +9,6 @@ import (
 	"github.com/authenticvision/util-go/generic"
 )
 
-// RootScope attributes are created as top-level fields in log messages.
-var RootScope = Scope{}
-
 // NewScope returns a scope with attributes for later instantiation of a logger or an error.
 // The scope's group name is used for grouping the scope's attributes via slog.Group.
 func NewScope(group string, attrs ...slog.Attr) *Scope {
@@ -67,7 +64,7 @@ func (s *Scope) concat(attrs []slog.Attr) []slog.Attr {
 // It is allowed to pass a nil err to create a new leaf error.
 // Use it in place of fmt.Errorf("message %q: %w", "detail", err) for nicer formatting in logs.
 // Use Scope for grouping error attributes.
-func NewError(msg string, err error, attrs ...slog.Attr) error {
+func NewError(err error, msg string, attrs ...slog.Attr) error {
 	if msg == "" {
 		// Allowing this might encourage the user to create error chains that obfuscate where the
 		// error was wrapped. A mostly unique message should identify the current operation.
