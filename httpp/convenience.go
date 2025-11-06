@@ -54,6 +54,10 @@ func Forbidden(public PublicMessage) error {
 	return logutil.Severity(Err(nil, http.StatusForbidden, public), slog.LevelWarn)
 }
 
+func NotFound(public PublicMessage) error {
+	return logutil.Severity(Err(nil, http.StatusNotFound, public), slog.LevelWarn)
+}
+
 func Unprocessable(err error, public PublicMessage) error {
 	return logutil.Severity(Err(err, http.StatusUnprocessableEntity, public), slog.LevelWarn)
 }
