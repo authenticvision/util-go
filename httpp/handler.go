@@ -76,8 +76,6 @@ type collectHandler struct {
 }
 
 func (h *collectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := h.next.ServeErrHTTP(w, r); err != nil {
-		errPtr := r.Context().Value(collectedErrorTag{}).(*error)
-		*errPtr = err
-	}
+	errPtr := r.Context().Value(collectedErrorTag{}).(*error)
+	*errPtr = h.next.ServeErrHTTP(w, r)
 }
