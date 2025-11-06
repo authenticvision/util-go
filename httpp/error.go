@@ -48,7 +48,7 @@ func (e httpError) StatusCode() int {
 }
 
 func (e httpError) StatusText() string {
-	if e.msg != "" {
+	if e.msg != DefaultMessage {
 		return string(e.msg)
 	}
 	return http.StatusText(e.statusCode)
