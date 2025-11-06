@@ -24,10 +24,6 @@ func (mux *ServeMux) HandleFunc(pattern string, handlerFunc HandlerFunc) {
 	mux.Handle(pattern, handlerFunc)
 }
 
-func (mux *ServeMux) HandleStd(pattern string, handler http.Handler) {
-	mux.next.Handle(pattern, handler)
-}
-
 func (mux *ServeMux) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error {
 	if r.RequestURI == "*" {
 		// reject OPTIONS requests, copied from http.ServeMux.ServeHTTP
