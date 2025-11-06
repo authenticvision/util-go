@@ -7,31 +7,31 @@ import (
 	"strings"
 )
 
-// ClientMessage is a string sent to the client as-is. This prevents accidentally forwarding a
+// PublicMessage is a string sent to the client as-is. This prevents accidentally forwarding a
 // non-constant string, e.g. an error message that contains confidential data, to clients.
-type ClientMessage string
+type PublicMessage string
 
-const DefaultMessage ClientMessage = ""
+const DefaultMessage PublicMessage = ""
 
-func Err(err error, statusCode int, clientMessage ClientMessage) error {
+func Err(err error, statusCode int, msg PublicMessage) error {
 	return Error{
 		err:           err,
 		statusCode:    statusCode,
-		clientMessage: clientMessage,
+		msg:        msg,
 	}
 }
 
 type Error struct {
 	err           error
 	statusCode    int
-	clientMessage ClientMessage
+	msg        PublicMessage
 }
 
 func (e Error) Error() string {
 	var sb strings.Builder
 	_, _ = fmt.Fprintf(&sb, "http status %d", e.statusCode)
-	if e.clientMessage != "" {
-		_, _ = fmt.Fprintf(&sb, ", %s", e.clientMessage)
+	if e.msg != "" {
+		_, _ = fmt.Fprintf(&sb, ", %s", e.msg)
 	}
 	if e.err != nil {
 		_, _ = fmt.Fprintf(&sb, ": %v", e.err)
@@ -48,8 +48,8 @@ func (e Error) StatusCode() int {
 }
 
 func (e Error) StatusText() string {
-	if e.clientMessage != "" {
-		return string(e.clientMessage)
+	if e.msg != "" {
+		return string(e.msg)
 	}
 	return http.StatusText(e.statusCode)
 }
