@@ -7,31 +7,31 @@ import (
 	"strings"
 )
 
-// ClientMessage is a string sent to the client as-is. This prevents accidentally forwarding a
+// PublicMessage is a string sent to the client as-is. This prevents accidentally forwarding a
 // non-constant string, e.g. an error message that contains confidential data, to clients.
-type ClientMessage string
+type PublicMessage string
 
-const DefaultMessage ClientMessage = ""
+const DefaultMessage PublicMessage = ""
 
-func Err(err error, statusCode int, clientMessage ClientMessage) error {
-	return Error{
-		err:           err,
-		statusCode:    statusCode,
-		clientMessage: clientMessage,
+func Err(err error, statusCode int, msg PublicMessage) error {
+	return httpError{
+		err:        err,
+		statusCode: statusCode,
+		msg:        msg,
 	}
 }
 
-type Error struct {
-	err           error
-	statusCode    int
-	clientMessage ClientMessage
+type httpError struct {
+	err        error
+	statusCode int
+	msg        PublicMessage
 }
 
-func (e Error) Error() string {
+func (e httpError) Error() string {
 	var sb strings.Builder
 	_, _ = fmt.Fprintf(&sb, "http status %d", e.statusCode)
-	if e.clientMessage != "" {
-		_, _ = fmt.Fprintf(&sb, ", %s", e.clientMessage)
+	if e.msg != "" {
+		_, _ = fmt.Fprintf(&sb, ", %s", e.msg)
 	}
 	if e.err != nil {
 		_, _ = fmt.Fprintf(&sb, ": %v", e.err)
@@ -39,17 +39,17 @@ func (e Error) Error() string {
 	return sb.String()
 }
 
-func (e Error) Unwrap() error {
+func (e httpError) Unwrap() error {
 	return e.err
 }
 
-func (e Error) StatusCode() int {
+func (e httpError) StatusCode() int {
 	return e.statusCode
 }
 
-func (e Error) StatusText() string {
-	if e.clientMessage != "" {
-		return string(e.clientMessage)
+func (e httpError) StatusText() string {
+	if e.msg != DefaultMessage {
+		return string(e.msg)
 	}
 	return http.StatusText(e.statusCode)
 }
@@ -60,7 +60,7 @@ func WriteError(w http.ResponseWriter, err error) {
 	if err == nil {
 		panic("httpp.WriteError called with nil error")
 	}
-	var httpErr Error
+	var httpErr httpError
 	if errors.As(err, &httpErr) {
 		http.Error(w, httpErr.StatusText(), httpErr.StatusCode())
 	} else if err != nil {

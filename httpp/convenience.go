@@ -42,22 +42,26 @@ func JSON(w http.ResponseWriter, resp any) error {
 	return JSONStatus(w, resp, http.StatusOK)
 }
 
-func BadRequest(err error, public ClientMessage) error {
+func BadRequest(err error, public PublicMessage) error {
 	return logutil.Severity(Err(err, http.StatusBadRequest, public), slog.LevelWarn)
 }
 
-func Unauthorized(public ClientMessage) error {
+func Unauthorized(public PublicMessage) error {
 	return logutil.Severity(Err(nil, http.StatusUnauthorized, public), slog.LevelWarn)
 }
 
-func Forbidden(public ClientMessage) error {
+func Forbidden(public PublicMessage) error {
 	return logutil.Severity(Err(nil, http.StatusForbidden, public), slog.LevelWarn)
 }
 
-func Unprocessable(err error, public ClientMessage) error {
+func NotFound(public PublicMessage) error {
+	return logutil.Severity(Err(nil, http.StatusNotFound, public), slog.LevelWarn)
+}
+
+func Unprocessable(err error, public PublicMessage) error {
 	return logutil.Severity(Err(err, http.StatusUnprocessableEntity, public), slog.LevelWarn)
 }
 
-func ServerError(err error, public ClientMessage) error {
+func ServerError(err error, public PublicMessage) error {
 	return Err(err, http.StatusInternalServerError, public)
 }

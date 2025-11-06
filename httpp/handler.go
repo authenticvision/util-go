@@ -6,6 +6,8 @@ import (
 	"net/http"
 )
 
+// Handler mirrors http.Handler, but can additionally return an error.
+// Errors are converted to HTTP status codes and can carry a public error message.
 type Handler interface {
 	ServeErrHTTP(http.ResponseWriter, *http.Request) error
 }
@@ -16,6 +18,7 @@ func (f HandlerFunc) ServeErrHTTP(w http.ResponseWriter, r *http.Request) error 
 	return f(w, r)
 }
 
+// StdHandler universally serves as http.Handler and Handler.
 type StdHandler interface {
 	http.Handler
 	Handler
@@ -44,6 +47,14 @@ func (h *noErrorHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) er
 	return nil
 }
 
+// Adapt converts a stdlib http.Handler into a Handler. It will never return an error.
+func Adapt(handler http.Handler) Handler {
+	return HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
+		handler.ServeHTTP(w, r)
+		return nil
+	})
+}
+
 // CollectErrors wraps a Handler in an http.Handler that stores errors
 // returned from the wrapped handler in the Request context.
 func CollectErrors(handler Handler) http.Handler {
@@ -65,8 +76,6 @@ type collectHandler struct {
 }
 
 func (h *collectHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if err := h.next.ServeErrHTTP(w, r); err != nil {
-		errPtr := r.Context().Value(collectedErrorTag{}).(*error)
-		*errPtr = err
-	}
+	errPtr := r.Context().Value(collectedErrorTag{}).(*error)
+	*errPtr = h.next.ServeErrHTTP(w, r)
 }
