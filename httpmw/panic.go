@@ -45,7 +45,7 @@ func (h *panicHandler) ServeErrHTTP(w http.ResponseWriter, r *http.Request) (res
 			if rec == http.ErrAbortHandler {
 				panic(rec)
 			}
-			err := logutil.NewError(PanicError{Value: rec}, "http handler panic", logutil.Stack(3))
+			err := logutil.NewError(PanicError{Value: rec}, "http handler recovered", logutil.Stack(3))
 			result = httpp.ServerError(err, httpp.DefaultMessage)
 		}
 	}()
