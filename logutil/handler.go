@@ -6,6 +6,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"slices"
 
 	"github.com/lmittmann/tint"
 	"github.com/mattn/go-isatty"
@@ -101,7 +102,8 @@ func (w *termOutputWrapper) attrReplacer(groups []string, a slog.Attr) slog.Attr
 
 // scopedErrorHandler extends log messages by scopedError attributes of an error under ErrKey.
 type scopedErrorHandler struct {
-	next slog.Handler
+	next     slog.Handler
+	errAttrs []slog.Attr
 }
 
 func (d *scopedErrorHandler) Enabled(ctx context.Context, level slog.Level) bool {
@@ -109,30 +111,52 @@ func (d *scopedErrorHandler) Enabled(ctx context.Context, level slog.Level) bool
 }
 
 func (d *scopedErrorHandler) Handle(ctx context.Context, record slog.Record) error {
+	errAttrs := d.errAttrs
 	record.Attrs(func(attr slog.Attr) bool {
-		if attr.Key == ErrKey {
-			value := attr.Value
-			if value.Kind() == slog.KindLogValuer {
-				value = value.LogValuer().LogValue()
-			}
-			if err, ok := value.Any().(error); ok {
-				attrs := Destructure(err)
-				if len(attrs) > 0 {
-					record = record.Clone()
-					record.AddAttrs(attrs...)
-				}
-				return false // stop
-			}
+		if err := extractErr(attr); err != nil {
+			errAttrs = slices.Clone(errAttrs)
+			errAttrs = append(errAttrs, Destructure(err)...)
+			return false // stop
 		}
 		return true // next key
 	})
+	if len(errAttrs) > 0 {
+		record = record.Clone()
+		record.AddAttrs(errAttrs...)
+	}
 	return d.next.Handle(ctx, record)
 }
 
 func (d *scopedErrorHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return &scopedErrorHandler{next: d.next.WithAttrs(attrs)}
+	// WithAttrs typically renders all existing attributes as string prefix. Handle will only
+	// receive the latest transient set of attributes. Prepare by destructuring the error early.
+	errAttrs := d.errAttrs
+	for _, attr := range attrs {
+		if err := extractErr(attr); err != nil {
+			errAttrs = slices.Clone(errAttrs)
+			errAttrs = append(errAttrs, Destructure(err)...)
+			break
+		}
+	}
+	return &scopedErrorHandler{
+		next:     d.next.WithAttrs(attrs),
+		errAttrs: errAttrs,
+	}
 }
 
 func (d *scopedErrorHandler) WithGroup(name string) slog.Handler {
 	return &scopedErrorHandler{next: d.next.WithGroup(name)}
+}
+
+func extractErr(attr slog.Attr) error {
+	if attr.Key == ErrKey {
+		value := attr.Value
+		if value.Kind() == slog.KindLogValuer {
+			value = value.LogValuer().LogValue()
+		}
+		if err, ok := value.Any().(error); ok {
+			return err
+		}
+	}
+	return nil
 }
