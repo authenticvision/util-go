@@ -120,8 +120,13 @@ func Run(cmd *cobra.Command) {
 		defer stop()
 		return cmd.ExecuteContext(ctx)
 	}()
-	if err != nil && !errors.Is(err, context.Canceled) {
+	if errors.Is(err, context.Canceled) {
 		ctx := cmd.Context() // might be different from ctx set up in closure above
+		log := logutil.FromContext(ctx)
+		log.DebugContext(ctx, "command canceled", logutil.Err(context.Cause(ctx)))
+		os.Exit(1)
+	} else if err != nil {
+		ctx := cmd.Context()
 		log := logutil.FromContext(ctx)
 		log.ErrorContext(ctx, "command failed", logutil.Err(err))
 		os.Exit(1)
