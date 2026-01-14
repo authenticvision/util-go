@@ -126,7 +126,7 @@ func clientConnDied(r *http.Request, err error) bool {
 	if !errors.As(err, &netErr) {
 		return false
 	}
-	if !(netErr.Op == "read" || netErr.Op == "write") {
+	if netErr.Op != "read" && netErr.Op != "write" {
 		return false
 	}
 	localAddr, ok := r.Context().Value(http.LocalAddrContextKey).(net.Addr)
