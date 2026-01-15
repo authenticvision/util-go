@@ -17,7 +17,7 @@ type CrossOriginProtection struct {
 }
 
 func (c *CrossOriginProtection) Middleware(handler httpp.Handler) httpp.Handler {
-	next := c.CrossOriginProtection.Handler(httpp.CollectErrors(handler))
+	next := c.Handler(httpp.CollectErrors(handler))
 	return httpp.HandlerFunc(func(w http.ResponseWriter, r *http.Request) error {
 		errReq, err := httpp.WithErrorCollector(r)
 		next.ServeHTTP(w, errReq)
