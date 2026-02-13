@@ -36,11 +36,17 @@ func StreamServerLogContextInterceptor(log *slog.Logger) grpc.StreamServerInterc
 }
 
 func UnaryServerLogWriterInterceptor() grpc.UnaryServerInterceptor {
-	return logging.UnaryServerInterceptor(&logHandler{}, logging.WithCodes(errToCode))
+	return logging.UnaryServerInterceptor(&logHandler{},
+		logging.WithCodes(errToCode),
+		logging.WithErrorFields(errToFields),
+	)
 }
 
 func StreamServerLogWriterInterceptor() grpc.StreamServerInterceptor {
-	return logging.StreamServerInterceptor(&logHandler{}, logging.WithCodes(errToCode))
+	return logging.StreamServerInterceptor(&logHandler{},
+		logging.WithCodes(errToCode),
+		logging.WithErrorFields(errToFields),
+	)
 }
 
 func errToCode(err error) codes.Code {
@@ -49,6 +55,13 @@ func errToCode(err error) codes.Code {
 	} else {
 		return logging.DefaultErrorToCode(err)
 	}
+}
+
+// errToFields simply exposes the error to ErrKey as-is, so that logutil's sinks can properly
+// destructure it. grpc-middleware unfortunately just dumps a stringified error into grpc.error and
+// thereby loses any type information and attachments.
+func errToFields(err error) logging.Fields {
+	return []any{logutil.ErrKey, logutil.Err(err).Value}
 }
 
 type accessLogTag struct{}
@@ -94,6 +107,8 @@ func (*logHandler) Log(ctx context.Context, levelInt logging.Level, msg string, 
 			log = log.With(slog.Any(logutil.UserKey, *user))
 		}
 	}
+	f := (*logging.Fields)(&fields)
+	f.Delete("grpc.error") // stringified duplicate of errToFields's proper error field
 	log.Log(ctx, level, msg, fields...)
 }
 

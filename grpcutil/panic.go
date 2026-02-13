@@ -19,8 +19,8 @@ func StreamServerPanicInterceptor() grpc.StreamServerInterceptor {
 	return recovery.StreamServerInterceptor(recovery.WithRecoveryHandlerContext(recoveryHandler))
 }
 
-func recoveryHandler(ctx context.Context, p any) error {
-	return logutil.NewError(PanicError{Value: p}, "panic", logutil.Stack(2))
+func recoveryHandler(_ context.Context, p any) error {
+	return logutil.NewError(PanicError{Value: p}, "panic", logutil.Stack(5))
 }
 
 // PanicError wraps a panic value and is returned when a handler panics.
@@ -29,7 +29,7 @@ type PanicError struct {
 }
 
 func (e PanicError) Error() string {
-	return fmt.Sprintf("panic: %v", e.Value)
+	return fmt.Sprintf("%v", e.Value)
 }
 
 func (e PanicError) Unwrap() error {
