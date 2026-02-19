@@ -21,7 +21,7 @@ func TestParse(t *testing.T) {
 		{name: "1TiB", arg: "1TiB", want: TiB},
 		{name: "1PiB", arg: "1PiB", want: PiB},
 		{name: "MAXINT+1", arg: "18446744073709551616B", wantErr: true},
-		{name: "MAXINT/1024+1KiB (overflow)", arg: "18014398509481985KiB", want: KiB},
+		{name: "MAXINT/1024+1KiB (overflow)", arg: "18014398509481985KiB", wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

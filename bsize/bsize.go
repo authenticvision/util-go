@@ -3,6 +3,7 @@ package bsize
 
 import (
 	"fmt"
+	"math"
 	"regexp"
 	"strconv"
 
@@ -42,7 +43,7 @@ func (b *Bytes) Type() string {
 var parseBytesRe = regexp.MustCompile(`^(\d+)([KMGTP]iB|B)?$`)
 
 // Parse parses a string of bytes size with an optional unit suffix (e.g. 1024 or 4KiB) into a number of bytes.
-// Not safe against overflows.
+// Returns an error if the result would overflow uint64 (~16384PiB).
 func Parse(s string) (Bytes, error) {
 	units := map[string]Bytes{"": B, "B": B, "KiB": KiB, "MiB": MiB, "GiB": GiB, "TiB": TiB, "PiB": PiB}
 	m := parseBytesRe.FindStringSubmatch(s)
@@ -53,7 +54,11 @@ func Parse(s string) (Bytes, error) {
 	if err != nil {
 		return 0, err
 	}
-	return Bytes(n) * units[m[2]], nil // note regex captures only keys of units
+	unit := uint64(units[m[2]]) // note regex captures only keys of units
+	if unit > 1 && n > math.MaxUint64/unit {
+		return 0, fmt.Errorf("size %s overflows uint64", s)
+	}
+	return Bytes(n) * units[m[2]], nil
 }
 
 // String returns a string representing the byte size in the form "1.5GiB". The fractional digit
