@@ -1,3 +1,4 @@
+// Package bsize provides typed bytes/size handling and parsing, modeled after time.Duration.
 package bsize
 
 import (
@@ -8,16 +9,25 @@ import (
 	"github.com/spf13/pflag"
 )
 
+const (
+	B   Bytes = 1
+	KiB Bytes = 1 << 10
+	MiB Bytes = 1 << 20
+	GiB Bytes = 1 << 30
+	TiB Bytes = 1 << 40
+	PiB Bytes = 1 << 50
+)
+
 var _ pflag.Value = (*Bytes)(nil)
 
 type Bytes uint64
 
 func (b *Bytes) UnmarshalText(s []byte) error {
-	n, err := ParseBytes(string(s))
+	n, err := Parse(string(s))
 	if err != nil {
 		return err
 	}
-	*b = Bytes(n)
+	*b = n
 	return nil
 }
 
@@ -29,41 +39,49 @@ func (b *Bytes) Type() string {
 	return "bytes"
 }
 
-func (b *Bytes) Bytes() uint64 {
-	return uint64(*b)
-}
+var parseBytesRe = regexp.MustCompile(`^(\d+)([KMGTP]iB|B)?$`)
 
-func (b *Bytes) String() string {
-	return FormatBytes(uint64(*b))
-}
-
-// ParseBytes parses a string of bytes size with an optional unit suffix (e.g. 1024 or 4KiB) into a number of bytes.
+// Parse parses a string of bytes size with an optional unit suffix (e.g. 1024 or 4KiB) into a number of bytes.
 // Not safe against overflows.
-func ParseBytes(s string) (uint64, error) {
-	units := map[string]uint64{"": 1, "B": 1, "KiB": 1024, "MiB": 1024 * 1024, "GiB": 1024 * 1024 * 1024, "TiB": 1024 * 1024 * 1024 * 1024}
-	re := regexp.MustCompile(`^(\d+)([KMGT]iB|B)?$`)
-	m := re.FindStringSubmatch(s)
+func Parse(s string) (Bytes, error) {
+	units := map[string]Bytes{"": B, "B": B, "KiB": KiB, "MiB": MiB, "GiB": GiB, "TiB": TiB, "PiB": PiB}
+	m := parseBytesRe.FindStringSubmatch(s)
 	if len(m) != 3 {
-		return 0, fmt.Errorf("input does not match format: %s", re.String())
+		return 0, fmt.Errorf("input does not match format: %s", parseBytesRe.String())
 	}
 	n, err := strconv.ParseUint(m[1], 10, 64)
 	if err != nil {
 		return 0, err
 	}
-	return n * units[m[2]], nil
+	return Bytes(n) * units[m[2]], nil // note regex captures only keys of units
 }
 
-func FormatBytes(n uint64) string {
-	if n < 1024 {
-		return fmt.Sprintf("%dB", n)
+// String returns a string representing the byte size in the form "1.5GiB". The fractional digit
+// and decimal point are omitted when the value is an even multiple of the unit. Sizes below 1KiB
+// format as plain bytes. The zero size formats as 0B.
+func (b Bytes) String() string {
+	if b < KiB {
+		return strconv.FormatUint(uint64(b), 10) + "B"
 	}
-	f := float64(n) / 1024
-	units := []string{"KiB", "MiB", "GiB", "TiB"}
-	for i, unit := range units {
-		if f < 1024 || i == len(units)-1 {
-			return fmt.Sprintf("%.1f%s", f, unit)
+	for _, u := range [...]struct {
+		size Bytes
+		name string
+	}{
+		{KiB, "KiB"}, {MiB, "MiB"}, {GiB, "GiB"}, {TiB, "TiB"},
+	} {
+		if b < u.size*1024 {
+			return fmtUnit(uint64(b), uint64(u.size)) + u.name
 		}
-		f /= 1024
 	}
-	panic("unreachable")
+	return fmtUnit(uint64(b), uint64(PiB)) + "PiB"
+}
+
+// fmtUnit formats v/unit with at most one decimal digit, taken from go stdlib's time package
+func fmtUnit(v, unit uint64) string {
+	whole := v / unit
+	tenths := v % unit * 10 / unit
+	if tenths == 0 {
+		return strconv.FormatUint(whole, 10)
+	}
+	return strconv.FormatUint(whole, 10) + "." + strconv.FormatUint(tenths, 10)
 }
