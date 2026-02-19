@@ -1,4 +1,4 @@
-package fmtutil
+package bsize
 
 import (
 	"testing"
