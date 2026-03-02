@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"net"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"github.com/authenticvision/util-go/httpmw"
@@ -61,7 +63,17 @@ func WithOnShutdown(f func()) ServerOption {
 func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opts ...ServerOption) error {
 	log := logutil.FromContext(ctx)
 
-	l, err := net.Listen("tcp", addr)
+	network := "tcp"
+	var ok bool
+	if addr, ok = strings.CutPrefix(addr, "unix:"); ok {
+		network = "unix"
+		defer func() {
+			if err := os.Remove(addr); err != nil {
+				log.Error("failed to remove unix socket file", logutil.Err(err))
+			}
+		}()
+	}
+	l, err := net.Listen(network, addr)
 	if err != nil {
 		return fmt.Errorf("listen %q: %w", addr, err)
 	}
@@ -129,7 +141,7 @@ type ServerConfigEmbedder interface {
 }
 
 type ServerConfig struct {
-	BindAddr string `usage:"address for HTTP connections"`
+	BindAddr string `usage:"bind address for HTTP connections. to use a unix socket, prefix with 'unix:'"`
 }
 
 func (c ServerConfig) ServerConfigEmbed() ServerConfig {
