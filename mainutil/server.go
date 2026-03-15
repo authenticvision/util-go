@@ -25,12 +25,12 @@ type ServerMain[T any] func(cfg *T, cmd *cobra.Command, args []string) (httpp.Ha
 
 // Server is a convenience function for single-purpose HTTP servers that require no additional
 // setup or teardown. It should wrap a function that returns an httpp.Handler for mainutil.Main.
-func Server[T ServerConfigEmbedder](serverMain ServerMain[T]) nicecmd.Hook[T] {
+func Server[T ServerConfigEmbedder](serverMain ServerMain[T], opts ...ServerOption) nicecmd.Hook[T] {
 	return func(cfg *T, cmd *cobra.Command, args []string) error {
 		addr := (*cfg).ServerConfigEmbed().BindAddr
 		if handler, err := serverMain(cfg, cmd, args); err != nil {
 			return fmt.Errorf("server main: %w", err)
-		} else if err := ListenAndServe(cmd.Context(), addr, handler); err != nil {
+		} else if err := ListenAndServe(cmd.Context(), addr, handler, opts...); err != nil {
 			return fmt.Errorf("listen and serve %q: %w", addr, err)
 		} else {
 			return nil
