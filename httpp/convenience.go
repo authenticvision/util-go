@@ -5,6 +5,7 @@ import (
 	"log/slog"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/authenticvision/util-go/logutil"
 )
@@ -40,6 +41,32 @@ func JSONStatus(w http.ResponseWriter, resp any, statusCode int) error {
 
 func JSON(w http.ResponseWriter, resp any) error {
 	return JSONStatus(w, resp, http.StatusOK)
+}
+
+func TextStatus(w http.ResponseWriter, resp string, statusCode int) error {
+	if !strings.HasSuffix(resp, "\n") {
+		resp += "\n"
+	}
+
+	hdr := w.Header()
+	hdr.Set("Content-Type", "text/plain; charset=utf-8")
+	if !PrefersVariableContentLength(w) {
+		hdr.Set("Content-Length", strconv.Itoa(len(resp)))
+	}
+
+	w.WriteHeader(statusCode)
+
+	_, err := w.Write([]byte(resp))
+	if err != nil {
+		// This usually fails with an I/O error when the client disconnects unexpectedly.
+		return logutil.Severity(ServerError(err, "Text write failure"), slog.LevelWarn)
+	}
+
+	return nil
+}
+
+func Text(w http.ResponseWriter, resp string) error {
+	return TextStatus(w, resp, http.StatusOK)
 }
 
 func BadRequest(err error, public PublicMessage) error {
