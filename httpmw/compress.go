@@ -123,6 +123,11 @@ func (w *compressWriter) WriteHeader(statusCode int) {
 	case w.optOut:
 		// DisableCompression was called
 
+	case statusCode >= 100 && statusCode <= 199:
+	case statusCode == http.StatusNoContent:
+	case statusCode == http.StatusNotModified:
+		// there's nothing to compress, and writing a zstd/gzip/etc header would cause a http.ErrBodyNotAllowed
+
 	case hdr.Get("Content-Encoding") != "":
 		// already compressed
 
