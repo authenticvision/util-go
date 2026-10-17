@@ -2,6 +2,7 @@ package mainutil
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -27,36 +28,63 @@ type ServerMain[T any] func(cfg *T, cmd *cobra.Command, args []string) (httpp.Ha
 // setup or teardown. It should wrap a function that returns an httpp.Handler for mainutil.Main.
 func Server[T ServerConfigEmbedder](serverMain ServerMain[T], opts ...ServerOption) nicecmd.Hook[T] {
 	return func(cfg *T, cmd *cobra.Command, args []string) error {
-		addr := (*cfg).ServerConfigEmbed().BindAddr
+		sc := (*cfg).ServerConfigEmbed()
+		if sc.TLSCertFile != "" || sc.TLSKeyFile != "" {
+			if sc.TLSCertFile == "" {
+				return fmt.Errorf("TLS cert is given but TLS key is empty")
+			} else if sc.TLSKeyFile == "" {
+				return fmt.Errorf("TLS key is given but TLS cert is empty")
+			}
+			opts = append([]ServerOption{WithTLS(sc.TLSCertFile, sc.TLSKeyFile)}, opts...)
+		}
 		if handler, err := serverMain(cfg, cmd, args); err != nil {
 			return fmt.Errorf("server main: %w", err)
-		} else if err := ListenAndServe(cmd.Context(), addr, handler, opts...); err != nil {
-			return fmt.Errorf("listen and serve %q: %w", addr, err)
+		} else if err := ListenAndServe(cmd.Context(), sc.BindAddr, handler, opts...); err != nil {
+			return fmt.Errorf("listen and serve %q: %w", sc.BindAddr, err)
 		} else {
 			return nil
 		}
 	}
 }
 
-type ServerOption func(*http.Server)
+type ServerOption func(*http.Server) error
 
 // WithPlainHTTP2 enables plain-text HTTP 2 in addition to HTTP 1, e.g. for a gRPC server.
 func WithPlainHTTP2() ServerOption {
-	return func(server *http.Server) {
-		if server.Protocols == nil {
-			// no need to also request encrypted HTTP2 here, ListenAndServe does not support HTTPS
-			server.Protocols = &http.Protocols{}
-			server.Protocols.SetHTTP1(true)
-		}
+	return func(server *http.Server) error {
 		server.Protocols.SetUnencryptedHTTP2(true)
+		return nil
 	}
 }
 
 // WithOnShutdown launches f in a separate goroutine when the HTTP server is shut down.
 // Shutdown usually happens a few seconds after termination is signaled.
 func WithOnShutdown(f func()) ServerOption {
-	return func(server *http.Server) {
+	return func(server *http.Server) error {
 		server.RegisterOnShutdown(f)
+		return nil
+	}
+}
+
+// WithTLSCert enables HTTPS with the given certificate.
+func WithTLSCert(cert tls.Certificate) ServerOption {
+	return func(server *http.Server) error {
+		if server.TLSConfig == nil {
+			server.TLSConfig = &tls.Config{}
+		}
+		server.TLSConfig.Certificates = append(server.TLSConfig.Certificates, cert)
+		return nil
+	}
+}
+
+// WithTLS loads the given cert and key and enables HTTPS.
+func WithTLS(certFile, keyFile string) ServerOption {
+	return func(server *http.Server) error {
+		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
+		if err != nil {
+			return fmt.Errorf("load TLS keypair: %w", err)
+		}
+		return WithTLSCert(cert)(server)
 	}
 }
 
@@ -77,10 +105,6 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opt
 	if err != nil {
 		return fmt.Errorf("listen %q: %w", addr, err)
 	}
-	//goland:noinspection HttpUrlsUsage
-	log.Info("listening",
-		slog.String("bind_addr", addr),
-		slog.String("link", fmt.Sprintf("http://%s", addr)))
 
 	reqCtx, reqCancel := context.WithCancel(context.WithoutCancel(ctx))
 	defer reqCancel()
@@ -96,15 +120,40 @@ func ListenAndServe(ctx context.Context, addr string, handler httpp.Handler, opt
 			// grace period of 20 seconds to complete after termination is requested.
 			return reqCtx
 		},
+		Protocols: func() *http.Protocols {
+			// in contrast to the http.Server defaults, we don't offer
+			// disabling HTTP2 via GODEBUG. It can still be disabled via
+			// a custom ServerOption
+			var p http.Protocols
+			p.SetHTTP1(true)
+			p.SetHTTP2(true)
+			return &p
+		}(),
 	}
 	for _, opt := range opts {
-		opt(server)
+		err = opt(server)
+		if err != nil {
+			return err
+		}
 	}
+
+	scheme := "http"
+	if server.TLSConfig != nil {
+		scheme = "https"
+	}
+	log.Info("listening",
+		slog.String("bind_addr", addr),
+		slog.String("link", fmt.Sprintf("%s://%s", scheme, addr)))
+
 	serveErr := make(chan error)
 	go func() {
 		// This goroutine runs until server.Shutdown() is called.
 		defer close(serveErr)
-		serveErr <- server.Serve(l)
+		if server.TLSConfig != nil {
+			serveErr <- server.ServeTLS(l, "", "")
+		} else {
+			serveErr <- server.Serve(l)
+		}
 	}()
 
 	select {
@@ -141,7 +190,9 @@ type ServerConfigEmbedder interface {
 }
 
 type ServerConfig struct {
-	BindAddr string `usage:"bind address for HTTP connections. to use a unix socket, prefix with 'unix:'"`
+	BindAddr    string `usage:"bind address for HTTP connections. to use a unix socket, prefix with 'unix:'"`
+	TLSCertFile string `usage:"PEM cert file. enables HTTPS when set together with --tls-key"`
+	TLSKeyFile  string `usage:"PEM key file. enables HTTPS when set together with --tls-cert"`
 }
 
 func (c ServerConfig) ServerConfigEmbed() ServerConfig {
